@@ -50,7 +50,7 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
         self.auto_regressive = nn.GRU(1024,hidden_size,1)
-        self.W = [nn.Linear(hidden_size,1024,bias=False) for i in range(K)] 
+        self.W = nn.ModuleList([nn.Linear(hidden_size,1024,bias=False) for i in range(K)] )
         
         self.K= K
         # self.dropout1 = nn.Dropout(0.25)
@@ -243,8 +243,9 @@ def main():
     for e in range(epochs):
         model.train()
         total_loss = 0.0
-        for data,_ in train_loader:
-            loss = torch.tensor(0.0)
+        for batch_idx,(data,_) in enumerate(train_loader):
+            data = data.to(device)
+            loss = torch.tensor(0.0).to(device)
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
             output = model(torch.unsqueeze(data.view(-1,*img_shape),1))
             output = output.view(*grid_shape,-1)
@@ -275,12 +276,14 @@ def main():
 
                         neg_sample_idx = np.random.choice(total_neg_sample,num_neg_sample,replace=True)
                         neg_samples = neg_samples_arr[:,neg_sample_idx,:]
-                        loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out)
+                        loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-        print("Loss is {}, epoch is {}".format(loss.item(),e))
+            if batch_idx % 100 ==0:
+                print("immediate Loss is {}, batch_idx is {}/{}".format(loss.item(),batch_idx,len(train_loader)))
+        print("Loss is {}, epoch is {}".format(total_loss,e))
                         
 
     
