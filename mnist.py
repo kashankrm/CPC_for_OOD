@@ -164,6 +164,8 @@ def main():
                         help='should model be saved')
     parser.add_argument('-e','--epochs', type=int, default=20 ,
                         help='how many epochs to run')
+    parser.add_argument('-ns','--num_neg_samples', type=int, default=5 ,
+                        help='how many negative samples to use')
                            
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
@@ -182,7 +184,7 @@ def main():
                        transform=transform)
     grid_shape_x = 6
     K=2
-    num_neg_sample = 10
+    num_neg_sample = args.num_neg_samples
     latent_size = 128
     email_sara_mila_lo = False
     
