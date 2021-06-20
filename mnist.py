@@ -166,6 +166,8 @@ def main():
                         help='how many epochs to run')
     parser.add_argument('-ns','--num_neg_samples', type=int, default=5 ,
                         help='how many negative samples to use')
+    parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
+                        help=" weight decay for adam")
                            
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
@@ -195,7 +197,7 @@ def main():
 
     model = Net(K=K,latent_size=latent_size).to(device)
     model = model.double()
-    optimizer = optim.Adam(model.parameters(),weight_decay=1e-5)
+    optimizer = optim.Adam(model.parameters(),weight_decay=args.weight_decay)
     
     for e in range(args.epochs):
         model.train()
