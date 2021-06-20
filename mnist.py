@@ -195,9 +195,11 @@ def main():
     for e in range(epochs):
         model.train()
         total_loss = 0.0
+        num_samples = 0
         for batch_idx,(data,_) in enumerate(train_loader):
             data = data.to(device)
             loss = torch.tensor(0.0).to(device)
+            num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
             output = model(torch.unsqueeze(data.view(-1,*img_shape),1))
             output = output.view(*grid_shape,-1)
@@ -234,8 +236,8 @@ def main():
             optimizer.step()
             total_loss += loss.item()
             if batch_idx % args.logging_interval ==0:
-                print("immediate Loss is {:.4f}, batch_idx is {}/{}".format(loss.item(),batch_idx,len(train_loader)))
-        print("Loss is {}, epoch is {}".format(total_loss,e))
+                print("average Loss is {:.4f}, batch_idx is {}/{}".format(total_loss/num_samples,batch_idx,len(train_loader)))
+        print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
         if args.save_model:
             torch.save({
                 "model":model.state_dict(),
