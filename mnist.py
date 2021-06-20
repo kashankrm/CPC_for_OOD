@@ -162,6 +162,8 @@ def main():
                         help='how often to print loss, every nth')
     parser.add_argument('-sm','--save-model', type=bool, default=True ,
                         help='should model be saved')
+    parser.add_argument('-e','--epochs', type=int, default=20 ,
+                        help='how many epochs to run')
                            
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
@@ -183,7 +185,7 @@ def main():
     num_neg_sample = 10
     latent_size = 1024
     email_sara_mila_lo = False
-    epochs = 10
+    
 
 
     train_loader = torch.utils.data.DataLoader(minist_train,batch_size=args.batch_size)
@@ -192,7 +194,7 @@ def main():
     model = Net(K=K).to(device)
     optimizer = optim.Adam(model.parameters(),weight_decay=1e-5)
     
-    for e in range(epochs):
+    for e in range(args.epochs):
         model.train()
         total_loss = 0.0
         num_samples = 0
