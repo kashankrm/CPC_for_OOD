@@ -23,4 +23,4 @@ def contrastive_loss(positive, negatives, W, context, temp = 0.5,norm=True):
     numerator = torch.exp(numerator)
     
     denom = torch.sum(torch.exp(denom),dim=1)
-    return torch.tensor((-1/(negatives.shape[1]+1))) * (torch.log(numerator/denom)).sum()
+    return torch.tensor((-1/(negatives.shape[1]+1))) * (torch.log(numerator/(denom+numerator))).sum()
