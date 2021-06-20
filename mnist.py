@@ -46,7 +46,7 @@ class TensorboardWriter():
     def cleanup(self):
         pass
 class Net(nn.Module):
-    def __init__(self,hidden_size=100,K=2):
+    def __init__(self,hidden_size=100,K=2,latent_size=1024):
         super(Net, self).__init__()
         self.feature = nn.Sequential(*[
             nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1,padding=1),
@@ -61,13 +61,13 @@ class Net(nn.Module):
             nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1,padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.Conv2d(in_channels=32,out_channels=64, kernel_size=3, stride=1,padding=1),
+            nn.Conv2d(in_channels=32,out_channels=8, kernel_size=3, stride=1,padding=1),
             nn.ReLU(),
             nn.AdaptiveAvgPool2d(output_size=(4,4))
         ])
         
-        self.auto_regressive = nn.GRU(1024,hidden_size,1)
-        self.W = nn.ModuleList([nn.Linear(hidden_size,1024,bias=False) for i in range(K)] )
+        self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
+        self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
         
         self.K= K
         # self.dropout1 = nn.Dropout(0.25)
@@ -183,7 +183,7 @@ def main():
     grid_shape_x = 6
     K=2
     num_neg_sample = 10
-    latent_size = 1024
+    latent_size = 128
     email_sara_mila_lo = False
     
 
@@ -191,7 +191,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(minist_train,batch_size=args.batch_size)
     test_loader = torch.utils.data.DataLoader(minist_test)
 
-    model = Net(K=K).to(device)
+    model = Net(K=K,latent_size=latent_size).to(device)
     optimizer = optim.Adam(model.parameters(),weight_decay=1e-5)
     
     for e in range(args.epochs):
