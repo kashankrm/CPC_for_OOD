@@ -194,6 +194,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(minist_test)
 
     model = Net(K=K,latent_size=latent_size).to(device)
+    model = model.double()
     optimizer = optim.Adam(model.parameters(),weight_decay=1e-5)
     
     for e in range(args.epochs):
