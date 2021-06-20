@@ -156,7 +156,7 @@ class CPCGridMaker:
 def main():
 
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('-bs','--batch-size', type=int, default=8, metavar='N',
+    parser.add_argument('-bs','--batch-size', type=int, default=1, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('-li','--logging-interval', type=int, default=100 ,
                         help='how often to print loss, every nth')
@@ -238,6 +238,7 @@ def main():
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
             total_loss += loss.item()
             if batch_idx % args.logging_interval ==0:
