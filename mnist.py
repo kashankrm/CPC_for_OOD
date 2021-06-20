@@ -238,7 +238,7 @@ def main():
             optimizer.step()
             total_loss += loss.item()
             if batch_idx % args.logging_interval ==0:
-                print("average Loss is {:.4f}, batch_idx is {}/{}".format(total_loss/num_samples,batch_idx,len(train_loader)))
+                print("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
         print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
         if args.save_model:
             torch.save({
