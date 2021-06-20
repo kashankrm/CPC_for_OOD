@@ -202,7 +202,7 @@ def main():
         total_loss = 0.0
         num_samples = 0
         for batch_idx,(data,_) in enumerate(train_loader):
-            data = data.to(device)
+            data = data.to(device).double()
             loss = torch.tensor(0.0).to(device)
             num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
