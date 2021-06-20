@@ -5,6 +5,7 @@ from math import inf
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules.batchnorm import BatchNorm2d
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
@@ -47,8 +48,24 @@ class TensorboardWriter():
 class Net(nn.Module):
     def __init__(self,hidden_size=100,K=2):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
+        self.feature = nn.Sequential(*[
+            nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32,out_channels=64, kernel_size=3, stride=1,padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d(output_size=(4,4))
+        ])
+        
         self.auto_regressive = nn.GRU(1024,hidden_size,1)
         self.W = nn.ModuleList([nn.Linear(hidden_size,1024,bias=False) for i in range(K)] )
         
@@ -59,10 +76,7 @@ class Net(nn.Module):
         # self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.conv2(x)
-        x = F.relu(x)
+        x = self.feature(x)
         return x
         # x = F.max_pool2d(x, 2)
         # x = self.dropout1(x)
@@ -142,10 +156,12 @@ class CPCGridMaker:
 def main():
 
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('-bs','--batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('-bs','--batch-size', type=int, default=8, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('-li','--logging-interval', type=int, default=100 ,
                         help='how often to print loss, every nth')
+    parser.add_argument('-sm','--save-model', type=bool, default=True ,
+                        help='should model be saved')
                            
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
@@ -174,7 +190,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(minist_test)
 
     model = Net(K=K).to(device)
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(),weight_decay=1e-5)
     
     for e in range(epochs):
         model.train()
@@ -193,7 +209,7 @@ def main():
                     inp = cl[:,:t+1,:]
                     
 
-                    ar_out,hn = model.auto_regressive(inp)
+                    ar_out,_ = model.auto_regressive(inp)
                     ar_out = ar_out[:,-1,:]
                     targets = cl[:,t:t+K,:]
                     for k in range(K):
@@ -218,8 +234,13 @@ def main():
             optimizer.step()
             total_loss += loss.item()
             if batch_idx % args.logging_interval ==0:
-                print("immediate Loss is {}, batch_idx is {}/{}".format(loss.item(),batch_idx,len(train_loader)))
+                print("immediate Loss is {:.4f}, batch_idx is {}/{}".format(loss.item(),batch_idx,len(train_loader)))
         print("Loss is {}, epoch is {}".format(total_loss,e))
+        if args.save_model:
+            torch.save({
+                "model":model.state_dict(),
+                "opt":optimizer.state_dict()
+            },"mnist_epoch{}.pt".format(e))
                         
 
     
