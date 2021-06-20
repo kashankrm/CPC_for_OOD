@@ -73,78 +73,6 @@ class Net(nn.Module):
         # x = self.fc2(x)
         # output = F.log_softmax(x, dim=1)
         # return output
-class Pruner:
-    def __init__(self,model,config):
-        self.model = model
-        self.strategy = config.get("strategy","OneShotMagnitudePrune") 
-        ignore_first_layer=config.get("ignore_first_layer",True)
-        ignore_last_layer=config.get("ignore_last_layer",True)
-        if "masking_percentage" in config:
-            if isinstance(config["masking_percentage"],int):
-                self.linear_p = config["masking_percentage"]
-                self.conv_p = config["masking_percentage"]
-
-            elif isinstance(config["masking_percentage"],dict):
-                self.linear_p = config["masking_percentage"].get("linear_p",0.2)
-                self.conv_p = config["masking_percentage"].get("conv_p",0.1)
-        if not hasattr(self,"linear_p"):
-            self.linear_p = 0.2
-            self.conv_p = 0.1
-        
-        self.ignore_first_layer = ignore_first_layer
-        self.ignore_last_layer = ignore_last_layer
-        self.calculate_masks(model)
-        self.apply_masks(model)
-
-    def calculate_masks(self,model):
-        masks = {}
-        module_list = list(model.named_modules())
-        for name,module in module_list:
-            if (name == module_list[-1][0] and self.ignore_last_layer) or (name == module_list[0][0] and self.ignore_first_layer):
-                continue
-            if any([isinstance(module,cl) for cl in [nn.Conv2d,nn.Linear]]):
-                if isinstance(module,nn.Conv2d):
-                    mask = self.magnitude_pruning(module.weight.data,p=self.conv_p).bool()    
-                else:
-                    mask = self.magnitude_pruning(module.weight.data,p=self.linear_p).bool()
-                
-                masks[name] = mask
-        self.masks = masks
-    def update_masks(self,model):
-        module_list = model.named_modules()
-        for name,module in module_list:
-            if hasattr(module,"mask"):
-                module.mask = self.masks[name]
-
-    def apply_masks(self,model):
-        def masking_forward_hook(self,_):
-            self.weight = self.original_weight * self.mask
-        module_list = list(model.named_modules())
-        for name,module in module_list:
-            if name == module_list[-1][0]:
-                continue
-            if any([isinstance(module,cl) for cl in [nn.Conv2d,nn.Linear]]):
-                
-                mask = self.masks[name]
-                module.register_parameter("original_weight",module.weight)
-                del module.weight
-                
-                module.register_buffer("mask",mask)
-                
-                module.register_forward_pre_hook( masking_forward_hook)
-        
-    def magnitude_pruning(self,tn,p=0.6):
-        shape=None
-        with torch.no_grad():
-            shape = tn.shape
-            tv = tn.view(-1)
-            tv = torch.abs(tv)
-            sorting = torch.argsort(tv)
-            tn_size = len(sorting)
-            mask = torch.ones_like(sorting)
-            mask[sorting[:int(tn_size*p)]] = 0
-            return torch.reshape(mask,shape)
-
     
 
 
@@ -212,8 +140,13 @@ class CPCGridMaker:
                 out[i,j,:,:] = sample[i*(grid_y//2):i*(grid_y//2)+grid_y,j*(grid_x//2):j*(grid_x//2)+grid_x]
         return out
 def main():
-    
+
+    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('-bs','--batch-size', type=int, default=64, metavar='N',
+                        help='input batch size for training (default: 64)')   
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    args = parser.parse_args()
+
     # device = torch.device("cpu")
     
 
@@ -234,7 +167,7 @@ def main():
     epochs = 10
 
 
-    train_loader = torch.utils.data.DataLoader(minist_train,batch_size=8)
+    train_loader = torch.utils.data.DataLoader(minist_train,batch_size=args.batch_size)
     test_loader = torch.utils.data.DataLoader(minist_test)
 
     model = Net(K=K).to(device)
