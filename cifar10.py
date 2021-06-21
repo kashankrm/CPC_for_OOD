@@ -82,6 +82,7 @@ def main():
         num_samples = 0
         feature_bank = FeatureBank(max_len=10000)
         for batch_idx,(data,_) in enumerate(train_loader):
+            cur_batch = data.shape[0]
             data = data.to(device).double()
             loss = torch.tensor(0.0).to(device)
             num_samples += data.shape[0]
@@ -112,7 +113,7 @@ def main():
                         neg_samples_arr = ncl.reshape((-1,total_neg_sample,latent_size))
 
                         neg_sample_idx = np.random.choice(total_neg_sample,num_neg_sample,replace=True)
-                        neg_samples = torch.from_numpy(neg_samples_arr[:,neg_sample_idx,:]).to(device)
+                        neg_samples = torch.from_numpy(neg_samples_arr[:cur_batch,neg_sample_idx,:]).to(device)
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
