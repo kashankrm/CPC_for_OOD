@@ -1,7 +1,7 @@
 from __future__ import print_function
 import argparse
 from datetime import datetime
-from math import inf
+from math import ceil, inf
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,6 +12,7 @@ from torch.optim.lr_scheduler import StepLR
 import os
 from torch.utils.tensorboard import SummaryWriter
 import atexit
+import random
 
 from torchvision.transforms.transforms import Resize
 from matplotlib import pyplot as plt
@@ -88,8 +89,27 @@ class Net(nn.Module):
         # output = F.log_softmax(x, dim=1)
         # return output
     
-
-
+class FeatureBank:
+    def __init__(self,max_len=1000) -> None:
+        self.max_len = max_len
+        self.data = []
+        self.neg_per_pic = 2
+    def append(self,feat_vec,batch_idx):
+        self.data.append({"batch_idx":batch_idx,"feat_vec":feat_vec})
+        if len(self.data)>self.max_len:
+            self.russian_roulette()
+    def get_samples(self,num_batches,batch_idx):
+        def get_diff_batch(num_batch):
+            for _ in range(num_batch):
+                batch = random.choice(self.data)
+                while batch["batch_idx"] == batch_idx:
+                    batch = random.choice(self.data)
+                yield batch["feat_vec"]
+        return [self.data[0]["feat_vec"]] if len(self.data) ==1 else list(get_diff_batch(num_batches))
+        
+    def russian_roulette(self):
+        unlucky_idx = random.rand(0,len(self.data))
+        del self.data[unlucky_idx]
 
 def train(args, model, device, train_loader, optimizer, epoch):
     
@@ -156,7 +176,7 @@ class CPCGridMaker:
 def main():
 
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('-bs','--batch-size', type=int, default=1, metavar='N',
+    parser.add_argument('-bs','--batch-size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('-li','--logging-interval', type=int, default=100 ,
                         help='how often to print loss, every nth')
@@ -203,6 +223,7 @@ def main():
         model.train()
         total_loss = 0.0
         num_samples = 0
+        feature_bank = FeatureBank(max_len=10000)
         for batch_idx,(data,_) in enumerate(train_loader):
             data = data.to(device).double()
             loss = torch.tensor(0.0).to(device)
@@ -210,14 +231,11 @@ def main():
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
             output = model(torch.unsqueeze(data.view(-1,*img_shape),1))
             output = output.view(*grid_shape,-1)
-            
+            feature_bank.append(output.detach().cpu().numpy(),batch_idx)
             for c in range(grid_shape_x):
                 cl = output[:,:,c,:]
                 for t in range(grid_shape_x-K):
-                    
                     inp = cl[:,:t+1,:]
-                    
-
                     ar_out,_ = model.auto_regressive(inp)
                     ar_out = ar_out[:,-1,:]
                     targets = cl[:,t:t+K,:]
@@ -225,18 +243,19 @@ def main():
                         pos_sample = targets[:,k,:] 
 
                         neg_idx = [i for i in range(grid_shape_x) if i!=c]
-                        
+                        feats = feature_bank.get_samples(num_neg_sample,batch_idx)
+                        ncl_data = np.stack(feats,axis=1)
                         if email_sara_mila_lo:
-                            ncl = output[:,:,neg_idx,:]
-                            total_neg_sample = ncl.shape[1]*ncl.shape[2]
-                            neg_samples_arr = ncl.view(-1,total_neg_sample,latent_size)
+                            
+                            ncl = ncl_data[:,:,:,neg_idx,:]
+                            total_neg_sample = ncl.shape[1]*ncl.shape[2]*ncl.shape[3]
                         else:
-                            ncl = output[:,k+t,neg_idx,:]
-                            total_neg_sample = ncl.shape[1]
-                            neg_samples_arr = ncl
+                            ncl = ncl_data[:,:,k+t,neg_idx,:]
+                            total_neg_sample = ncl.shape[1]*ncl.shape[2]
+                        neg_samples_arr = ncl.reshape((-1,total_neg_sample,latent_size))
 
                         neg_sample_idx = np.random.choice(total_neg_sample,num_neg_sample,replace=True)
-                        neg_samples = neg_samples_arr[:,neg_sample_idx,:]
+                        neg_samples = torch.from_numpy(neg_samples_arr[:,neg_sample_idx,:]).to(device)
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
