@@ -72,7 +72,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(minist_train,batch_size=args.batch_size)
     test_loader = torch.utils.data.DataLoader(minist_test)
 
-    model = Conv4(K=K,latent_size=latent_size).to(device)
+    model = Conv4(img_channels=3,K=K,latent_size=latent_size).to(device)
     model = model.double()
     optimizer = optim.Adam(model.parameters(),weight_decay=args.weight_decay)
     
