@@ -16,12 +16,19 @@ class CPCGridMaker:
         
         sample = torch.squeeze(sample)
         grid_x,grid_y = self.grid_shape
-        h, w = sample.shape
+        d, h, w = sample.shape if len(sample.shape)>2 else (0,*sample.shape)
         out_shape_y,out_shape_x = h//(grid_y//2) -1, w//(grid_x//2) -1
-        out = torch.zeros((out_shape_y,out_shape_x,grid_y,grid_x))
+        
+        if d ==0:
+            out = torch.zeros((out_shape_y,out_shape_x,grid_y,grid_x))
+        else:
+            out = torch.zeros((out_shape_y,out_shape_x,d,grid_y,grid_x,))
         for i in range(out_shape_y):
             for j in range(out_shape_x):
-                out[i,j,:,:] = sample[i*(grid_y//2):i*(grid_y//2)+grid_y,j*(grid_x//2):j*(grid_x//2)+grid_x]
+                if d ==0:
+                    out[i,j,:,:] = sample[i*(grid_y//2):i*(grid_y//2)+grid_y,j*(grid_x//2):j*(grid_x//2)+grid_x]
+                else:
+                    out[i,j,:,:,:] = sample[:,i*(grid_y//2):i*(grid_y//2)+grid_y,j*(grid_x//2):j*(grid_x//2)+grid_x]
         return out
 def main():
 
@@ -50,11 +57,11 @@ def main():
         transforms.Normalize((0.1307,), (0.3081,)),
         CPCGridMaker((8,8))
         ])
-    minist_train = datasets.MNIST('./data', train=True, download=True,
+    minist_train = datasets.CIFAR10('./data', train=True, download=True,
                        transform=transform)
-    minist_test = datasets.MNIST('./data', train=False,
+    minist_test = datasets.CIFAR10('./data', train=False,
                        transform=transform)
-    grid_shape_x = 6
+    grid_shape_x = 7
     K=2
     num_neg_sample = args.num_neg_samples
     latent_size = 128
@@ -79,7 +86,7 @@ def main():
             loss = torch.tensor(0.0).to(device)
             num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
-            output = model(torch.unsqueeze(data.view(-1,*img_shape),1))
+            output = model(data.view(-1,*img_shape))
             output = output.view(*grid_shape,-1)
             feature_bank.append(output.detach().cpu().numpy(),batch_idx)
             for c in range(grid_shape_x):
