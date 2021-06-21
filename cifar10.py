@@ -95,7 +95,7 @@ def main():
                     inp = cl[:,:t+1,:]
                     ar_out,_ = model.auto_regressive(inp)
                     ar_out = ar_out[:,-1,:]
-                    targets = cl[:,t:t+K,:]
+                    targets = cl[:,t+1:t+K+1,:]
                     for k in range(K):
                         pos_sample = targets[:,k,:] 
 
