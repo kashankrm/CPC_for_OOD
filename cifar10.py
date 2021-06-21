@@ -126,7 +126,7 @@ def main():
             torch.save({
                 "model":model.state_dict(),
                 "opt":optimizer.state_dict()
-            },"mnist_epoch{}.pt".format(e))
+            },"cifar_epoch{}.pt".format(e))
                         
 
     
