@@ -27,19 +27,22 @@ class CPCGridMaker:
         return out
 
 class MNISTDataModule(pl.LightningDataModule):
+    def __init__(self, batch_size):
+        super().__init__()
+        self.batch_size = batch_size
 
-  def setup(self, stage):
-    # transforms for images
-    transform=transforms.Compose([transforms.ToTensor(), 
-                                  transforms.Normalize((0.1307,), (0.3081,)),
-                                  CPCGridMaker((14,14))])
-      
-    # prepare transforms standard to MNIST
-    self.mnist_train = datasets.MNIST("./data", train=True, download=True, transform=transform)
-    self.mnist_test = datasets.MNIST("./data", train=False, download=True, transform=transform)
+    def setup(self, stage):
+        # transforms for images
+        transform=transforms.Compose([transforms.ToTensor(), 
+                                    transforms.Normalize((0.1307,), (0.3081,)),
+                                    CPCGridMaker((14,14))])
+        
+        # prepare transforms standard to MNIST
+        self.mnist_train = datasets.MNIST("./data", train=True, download=True, transform=transform)
+        self.mnist_test = datasets.MNIST("./data", train=False, download=True, transform=transform)
 
-  def train_dataloader(self):
-    return DataLoader(self.mnist_train, batch_size=64)
+    def train_dataloader(self):
+        return DataLoader(self.mnist_train, batch_size=self.batch_size,num_workers=4)
 
-  def val_dataloader(self):
-    return DataLoader(self.mnist_test, batch_size=64)
+    def val_dataloader(self):
+        return DataLoader(self.mnist_test, batch_size=self.batch_size,num_workers=4)

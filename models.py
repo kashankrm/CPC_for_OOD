@@ -79,13 +79,23 @@ class LinClassifier(pl.LightningModule):
         data,target = train_batch
         logits = self.forward(data)
         loss = self.cross_entropy_loss(logits,target)
+        accuracy = self.accuracy(logits, target)
+        self.log("train_accuracy", accuracy)
         self.log("train_loss",loss)
         return loss
     def validation_step(self,val_batch,batch_idx):
         data, target = val_batch
         logits = self.forward(data)
         loss = self.cross_entropy_loss(logits,target)
+        accuracy = self.accuracy(logits, target)
         self.log("val_loss",loss)
+        self.log("val_accuracy",accuracy)
+        return {"val_loss": loss, "val_accuracy": accuracy}
     def configure_optimizers(self):
         opt = torch.optim.Adam(self.parameters(),lr=1e-3)
         return opt
+    def accuracy(self, logits, labels):
+        _, predicted = torch.max(logits.data, 1)
+        correct = (predicted == labels).sum().item()
+        accuracy = correct / len(labels)
+        return torch.tensor(accuracy)

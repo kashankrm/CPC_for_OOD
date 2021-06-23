@@ -16,24 +16,23 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('-bs','--batch-size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('-li','--logging-interval', type=int, default=100 ,
-                        help='how often to print loss, every nth')
     parser.add_argument('-sm','--save-model', type=bool, default=True ,
                         help='should model be saved')
     parser.add_argument('-e','--epochs', type=int, default=20 ,
                         help='how many epochs to run')
-    parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
-                        help=" weight decay for adam")
+    
+    parser.add_argument("-pt","--pretrain",type =str,help="path to the pretrain network",required=True)
                            
     device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
     args = parser.parse_args()
 
     # device = torch.device("cpu")
-    data_module = MNISTDataModule()
+    data_module = MNISTDataModule(args.batch_size)
 
     # train
-    model = LinClassifier("cpc_models/mnist_epoch27.pt")
-    trainer = pl.Trainer(gpus=1)
+    model = LinClassifier(args.pretrain)
+    
+    trainer = pl.Trainer(gpus=1,max_epochs= args.epochs,min_epochs=1)
 
     trainer.fit(model, data_module)
     # minist_train = datasets.MNIST('./data', train=True, download=True,
