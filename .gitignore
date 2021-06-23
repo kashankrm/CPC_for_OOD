@@ -1,4 +1,6 @@
 *.pt
 *.pyc
-data*
+data/*
 .vscode/*
+lightning_logs/*
+cpc_models/*
