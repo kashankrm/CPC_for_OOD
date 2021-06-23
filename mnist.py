@@ -38,6 +38,9 @@ def main():
                         help='how many negative samples to use')
     parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
                         help=" weight decay for adam")
+    parser.add_argument('-k','--K', type=int, default=2 ,
+                        help='how many steps to predict')
+    
                            
     device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
     args = parser.parse_args()
@@ -55,7 +58,7 @@ def main():
     minist_test = datasets.MNIST('./data', train=False,
                        transform=transform)
     grid_shape_x = 3
-    K=2
+    K=args.K
     num_neg_sample = args.num_neg_samples
     latent_size = 128
     email_sara_mila_lo = False
