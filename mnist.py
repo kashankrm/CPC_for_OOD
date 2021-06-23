@@ -39,7 +39,7 @@ def main():
     parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
                         help=" weight decay for adam")
                            
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() and False else "cpu")
     args = parser.parse_args()
 
     # device = torch.device("cpu")
@@ -98,15 +98,15 @@ def main():
                         # ncl_data = np.stack(feats,axis=1)
                         if email_sara_mila_lo:
                             
-                            ncl = output[:,:,:,neg_idx,:]
-                            total_neg_sample = ncl.shape[1]*ncl.shape[2]*ncl.shape[3]
-                        else:
-                            ncl = output[:,:,k+t,neg_idx,:]
+                            ncl = output[:,:,neg_idx,:]
                             total_neg_sample = ncl.shape[1]*ncl.shape[2]
+                        else:
+                            ncl = output[:,k+t,neg_idx,:]
+                            total_neg_sample = ncl.shape[1]
                         neg_samples_arr = ncl.reshape((-1,total_neg_sample,latent_size))
 
                         neg_sample_idx = np.random.choice(total_neg_sample,num_neg_sample,replace=True)
-                        neg_samples = torch.from_numpy(neg_samples_arr[:cur_batch,neg_sample_idx,:]).to(device)
+                        neg_samples = neg_samples_arr[:cur_batch,neg_sample_idx,:]
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
