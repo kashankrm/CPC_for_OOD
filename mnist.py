@@ -34,7 +34,7 @@ def main():
                         help='should model be saved')
     parser.add_argument('-e','--epochs', type=int, default=20 ,
                         help='how many epochs to run')
-    parser.add_argument('-ns','--num_neg_samples', type=int, default=5 ,
+    parser.add_argument('-ns','--num_neg_samples', type=int, default=20 ,
                         help='how many negative samples to use')
     parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
                         help=" weight decay for adam")
@@ -73,7 +73,7 @@ def main():
         model.train()
         total_loss = 0.0
         num_samples = 0
-        feature_bank = FeatureBank(max_len=10000)
+        # feature_bank = FeatureBank(max_len=10)
         for batch_idx,(data,_) in enumerate(train_loader):
             cur_batch = data.shape[0]
             data = data.to(device).double()
@@ -82,7 +82,7 @@ def main():
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
             output = model(torch.unsqueeze(data.view(-1,*img_shape),1))
             output = output.view(*grid_shape,-1)
-            feature_bank.append(output.detach().cpu().numpy(),batch_idx)
+            # feature_bank.append(output.detach().cpu().numpy(),batch_idx)
             for c in range(grid_shape_x):
                 cl = output[:,:,c,:]
                 for t in range(grid_shape_x-K):
@@ -94,14 +94,14 @@ def main():
                         pos_sample = targets[:,k,:] 
 
                         neg_idx = [i for i in range(grid_shape_x) if i!=c]
-                        feats = feature_bank.get_samples(num_neg_sample,batch_idx)
-                        ncl_data = np.stack(feats,axis=1)
+                        # feats = feature_bank.get_samples(num_neg_sample,batch_idx)
+                        # ncl_data = np.stack(feats,axis=1)
                         if email_sara_mila_lo:
                             
-                            ncl = ncl_data[:,:,:,neg_idx,:]
+                            ncl = output[:,:,:,neg_idx,:]
                             total_neg_sample = ncl.shape[1]*ncl.shape[2]*ncl.shape[3]
                         else:
-                            ncl = ncl_data[:,:,k+t,neg_idx,:]
+                            ncl = output[:,:,k+t,neg_idx,:]
                             total_neg_sample = ncl.shape[1]*ncl.shape[2]
                         neg_samples_arr = ncl.reshape((-1,total_neg_sample,latent_size))
 

@@ -18,5 +18,6 @@ class FeatureBank:
         return [self.data[0]["feat_vec"]] if len(self.data) ==1 else list(get_diff_batch(num_batches))
         
     def russian_roulette(self):
-        unlucky_idx = random.rand(0,len(self.data))
-        del self.data[unlucky_idx]
+        del self.data[0]
+        # unlucky_idx = random.rand(0,len(self.data))
+        # del self.data[unlucky_idx]
