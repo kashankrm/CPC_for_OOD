@@ -39,7 +39,7 @@ def main():
     parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
                         help=" weight decay for adam")
                            
-    device = torch.device("cuda" if torch.cuda.is_available() and False else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
     args = parser.parse_args()
 
     # device = torch.device("cpu")
