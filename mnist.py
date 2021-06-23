@@ -48,13 +48,13 @@ def main():
     transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,)),
-        CPCGridMaker((8,8))
+        CPCGridMaker((14,14))
         ])
     minist_train = datasets.MNIST('./data', train=True, download=True,
                        transform=transform)
     minist_test = datasets.MNIST('./data', train=False,
                        transform=transform)
-    grid_shape_x = 6
+    grid_shape_x = 3
     K=2
     num_neg_sample = args.num_neg_samples
     latent_size = 128
