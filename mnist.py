@@ -51,13 +51,13 @@ def main():
     transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,)),
-        CPCGridMaker((14,14))
+        CPCGridMaker((8,8))
         ])
     minist_train = datasets.MNIST('./data', train=True, download=True,
                        transform=transform)
     minist_test = datasets.MNIST('./data', train=False,
                        transform=transform)
-    grid_shape_x = 3
+    grid_shape_x = 6
     K=args.K
     num_neg_sample = args.num_neg_samples
     latent_size = 128
@@ -86,30 +86,32 @@ def main():
             output = model(torch.unsqueeze(data.view(-1,*img_shape),1))
             output = output.view(*grid_shape,-1)
             # feature_bank.append(output.detach().cpu().numpy(),batch_idx)
-            for c in range(grid_shape_x):
-                cl = output[:,:,c,:]
-                for t in range(grid_shape_x-K):
-                    inp = cl[:,:t+1,:]
-                    ar_out,_ = model.auto_regressive(inp)
+            
+                
+            for t in range(grid_shape_x-K):
+                for c in range(grid_shape_x):        
+                    enc_grid = output[:,:t+1,:,:].view(cur_batch,-1,latent_size)
+                    enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
+                    ar_out,_ = model.auto_regressive(enc_grid)
                     ar_out = ar_out[:,-1,:]
-                    targets = cl[:,t+1:t+K+1,:]
+                    targets = output[:,t+1:t+K+1,c,:]
                     for k in range(K):
                         pos_sample = targets[:,k,:] 
 
-                        neg_idx = [i for i in range(grid_shape_x) if i!=c]
-                        # feats = feature_bank.get_samples(num_neg_sample,batch_idx)
-                        # ncl_data = np.stack(feats,axis=1)
-                        if email_sara_mila_lo:
+                        # neg_idx = [i for i in range(grid_shape_x) if i!=c]
+                        # # feats = feature_bank.get_samples(num_neg_sample,batch_idx)
+                        # # ncl_data = np.stack(feats,axis=1)
+                        # if email_sara_mila_lo:
                             
-                            ncl = output[:,:,neg_idx,:]
-                            total_neg_sample = ncl.shape[1]*ncl.shape[2]
-                        else:
-                            ncl = output[:,k+t,neg_idx,:]
-                            total_neg_sample = ncl.shape[1]
-                        neg_samples_arr = ncl.reshape((-1,total_neg_sample,latent_size))
+                        #     ncl = output[:,:,neg_idx,:]
+                        #     total_neg_sample = ncl.shape[1]*ncl.shape[2]
+                        # else:
+                        #     ncl = output[:,k+t,neg_idx,:]
+                        #     total_neg_sample = ncl.shape[1]
+                        # neg_samples_arr = ncl.reshape((-1,total_neg_sample,latent_size))
 
-                        neg_sample_idx = np.random.choice(total_neg_sample,num_neg_sample,replace=True)
-                        neg_samples = neg_samples_arr[:cur_batch,neg_sample_idx,:]
+                        neg_sample_idx = np.random.choice(grid_shape_x**2,num_neg_sample,replace=True)
+                        neg_samples = output.view(cur_batch,-1,latent_size)[:,neg_sample_idx,:]
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
