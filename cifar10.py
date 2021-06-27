@@ -35,7 +35,7 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('-bs','--batch-size', type=int, default=256, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('-li','--logging-interval', type=int, default=100 ,
+    parser.add_argument('-li','--logging-interval', type=int, default=10 ,
                         help='how often to print loss, every nth')
     parser.add_argument('-sm','--save-model', type=bool, default=True ,
                         help='should model be saved')
