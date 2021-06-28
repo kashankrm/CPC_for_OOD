@@ -94,7 +94,9 @@ def main():
             total_loss += loss.item()
             if batch_idx % args.logging_interval ==0:
                 print("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
+                logging.debug("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
         print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
+        logging.debug("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
         model.eval()
         linear.eval()
         eval_loss = 0.0
@@ -110,6 +112,7 @@ def main():
             loss = criterion(output, labels)
             eval_loss += loss.item()
         print("Eval Loss is {}, epoch is {}".format(total_loss/eval_total,e))
+        logging.debug("Eval Loss is {}, epoch is {}".format(total_loss/eval_total,e))
         if args.save_model:
             torch.save({
                 "model":model.state_dict(),
