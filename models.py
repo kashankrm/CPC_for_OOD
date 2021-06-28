@@ -47,12 +47,12 @@ class Conv4(nn.Module):
 class Linear_Layer(nn.Module):
     def __init__(self,input_size = 25088, classes = 10):
         super().__init__()
-        self.feature = nn.Sequential(nn.Linear(input_size, input_size//2, bias=True),
+        self.feature = nn.Sequential(nn.Linear(input_size, 1024, bias=True),
         nn.Dropout(),
-        nn.ReLU(inplace=False),
-        nn.Linear(input_size//2, 512, bias=True),
+        nn.ReLU(inplace=True),
+        nn.Linear(1024, 512, bias=True),
         nn.Dropout(),
-        nn.ReLU(inplace=False),
+        nn.ReLU(inplace=True),
         nn.Linear(512, classes, bias=True))
     
     def forward(self, x):

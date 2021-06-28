@@ -60,7 +60,7 @@ def main():
                        transform=transform)
 
     train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size,num_workers=4 )
-
+    test_loader = torch.utils.data.DataLoader(cifar_test,batch_size=args.batch_size,num_workers=4 )
     model = Conv4(img_channels=3,K=K,latent_size=latent_size).to(device)
     ckpt = torch.load("cifar_epoch15.pt")
     model.load_state_dict(ckpt["model"])
@@ -94,8 +94,22 @@ def main():
             total_loss += loss.item()
             if batch_idx % args.logging_interval ==0:
                 print("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
-        
         print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
+        model.eval()
+        linear.eval()
+        eval_loss = 0.0
+        eval_total = 0.0
+        for batch_idx,(data,labels) in enumerate(test_loader):
+            eval_total += data.shape[0]
+            data = data.to(device)
+            labels = labels.to(device)
+            grid_shape,img_shape = data.shape[:3],data.shape[3:]
+            feature = model(data.view(-1,*img_shape))
+            feature = feature.view(grid_shape[0],-1)
+            output = linear(feature)
+            loss = criterion(output, labels)
+            eval_loss += loss.item()
+        print("Eval Loss is {}, epoch is {}".format(total_loss/eval_total,e))
         if args.save_model:
             torch.save({
                 "model":model.state_dict(),
