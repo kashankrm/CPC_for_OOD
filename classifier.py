@@ -20,6 +20,8 @@ def main():
                         help='should model be saved')
     parser.add_argument('-e','--epochs', type=int, default=20 ,
                         help='how many epochs to run')
+    parser.add_argument('-nm','--no-mean',action='store_true',default=False,type=bool,
+                        help='disables mean pool on grid')
     
     parser.add_argument("-pt","--pretrain",type =str,help="path to the pretrain network",required=True)
                            
@@ -27,10 +29,15 @@ def main():
     args = parser.parse_args()
 
     # device = torch.device("cpu")
-    data_module = MNISTDataModule(args.batch_size)
+    cpc_grid = (8,8)
+    if cpc_grid == (8,8):
+        grid_shape = (7,7)
+    else:
+        grid_shape = (3,3)
+    data_module = MNISTDataModule(args.batch_size,cpc_grid=cpc_grid)
 
     # train
-    model = LinClassifier(args.pretrain)
+    model = LinClassifier(args.pretrain,no_mean=args.no_mean,grid_shape=grid_shape)
     
     trainer = pl.Trainer(gpus=1,max_epochs= args.epochs,min_epochs=1)
 

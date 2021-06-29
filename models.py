@@ -48,9 +48,10 @@ class Conv4(nn.Module):
         # output = F.log_softmax(x, dim=1)
         # return output
 class LinClassifier(pl.LightningModule):
-    def __init__(self,pretrain_path) -> None:
+    def __init__(self,pretrain_path,no_mean=False,grid_shape=None) -> None:
         super().__init__()
-        
+        assert no_mean and grid_shape is not None, "grid shape can not be None for no_mean=True"
+        self.no_mean = no_mean
         self.feat = Conv4(latent_size=128)
         model_state = {key[len("feature."):]:val for key,val in torch.load(pretrain_path)["model"].items() if "feature" in key}
         
@@ -62,7 +63,10 @@ class LinClassifier(pl.LightningModule):
             self.latent_size = self.feat.latent_size
         else:
             self.latent_size = 128
-        self.lin = Linear(self.latent_size,10)
+        if no_mean:
+            self.lin = Linear(self.latent_size*grid_shape[0]*grid_shape[1],10)
+        else:
+            self.lin = Linear(self.latent_size,10)
         self.val_acc = 0
     
     def forward(self,x):
@@ -70,7 +74,10 @@ class LinClassifier(pl.LightningModule):
         batch_grid, img_shape = x.shape[:3],x.shape[3:]
         res = self.feat.feature(x.view(-1,*img_shape))
         res = res.view(*batch_grid,-1)
-        res = torch.mean(res,dim=[1,2])
+        if self.no_mean:
+            res = res.view(batch_grid[0],-1)
+        else:
+            res = torch.mean(res,dim=[1,2])
         x = self.lin(res)
         x = F.sigmoid(x)
 
