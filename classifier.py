@@ -31,7 +31,7 @@ def main():
     # device = torch.device("cpu")
     cpc_grid = (8,8)
     if cpc_grid == (8,8):
-        grid_shape = (7,7)
+        grid_shape = (6,6)
     else:
         grid_shape = (3,3)
     data_module = MNISTDataModule(args.batch_size,cpc_grid=cpc_grid)
