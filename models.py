@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-
+from pytorch_lightning.utilities.types import EPOCH_OUTPUT
 from torch.nn.modules.linear import Linear
 import pytorch_lightning  as pl
 class Conv4(nn.Module):
@@ -63,6 +63,7 @@ class LinClassifier(pl.LightningModule):
         else:
             self.latent_size = 128
         self.lin = Linear(self.latent_size,10)
+        self.val_acc = 0
     
     def forward(self,x):
         x = torch.unsqueeze(x,-3)
@@ -71,6 +72,7 @@ class LinClassifier(pl.LightningModule):
         res = res.view(*batch_grid,-1)
         res = torch.mean(res,dim=[1,2])
         x = self.lin(res)
+        x = F.sigmoid(x)
 
         return F.log_softmax(x,1)
     def cross_entropy_loss(self,logits,labels):
@@ -91,6 +93,12 @@ class LinClassifier(pl.LightningModule):
         self.log("val_loss",loss)
         self.log("val_accuracy",accuracy)
         return {"val_loss": loss, "val_accuracy": accuracy}
+    def validation_epoch_end(self, outputs: EPOCH_OUTPUT) -> None:
+        
+        accuracy = torch.tensor([x["val_accuracy"] for x in outputs]).mean()
+        if self.val_acc <accuracy:
+            self.val_acc = accuracy
+        return super().validation_epoch_end(outputs)
     def configure_optimizers(self):
         opt = torch.optim.Adam(self.parameters(),lr=1e-3)
         return opt
