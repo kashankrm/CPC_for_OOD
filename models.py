@@ -25,6 +25,25 @@ class Conv4(nn.Module):
             nn.ReLU(),
             nn.AdaptiveAvgPool2d(output_size=(4,4))
         ])
+        # self.feature = nn.Sequential(*[
+        #     nn.Conv2d(in_channels=img_channels, out_channels=32, kernel_size=3, stride=1,padding=1),
+        #     nn.BatchNorm2d(32),
+        #     nn.ReLU(),
+        #     nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1,padding=1),
+        #     nn.BatchNorm2d(32),
+        #     nn.ReLU(),
+        #     nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2,padding=1),
+        #     nn.BatchNorm2d(32),
+        #     nn.ReLU(),
+        #     nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1,padding=1),
+        #     nn.BatchNorm2d(64),
+        #     nn.ReLU(),
+        #     nn.Conv2d(in_channels=64,out_channels=64, kernel_size=3, stride=1,padding=1),
+        #     nn.ReLU(),
+        #     nn.AdaptiveAvgPool2d(output_size=(4,4))
+        # ])
+        
+        # self.
         
         self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
         self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
@@ -50,7 +69,7 @@ class Conv4(nn.Module):
 class LinClassifier(pl.LightningModule):
     def __init__(self,pretrain_path,no_mean=False,grid_shape=None) -> None:
         super().__init__()
-        assert no_mean and grid_shape is not None, "grid shape can not be None for no_mean=True"
+        assert  not (no_mean and grid_shape is None), "grid shape can not be None for no_mean=True"
         self.no_mean = no_mean
         self.feat = Conv4(latent_size=128)
         model_state = {key[len("feature."):]:val for key,val in torch.load(pretrain_path)["model"].items() if "feature" in key}

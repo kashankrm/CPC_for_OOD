@@ -20,7 +20,7 @@ def main():
                         help='should model be saved')
     parser.add_argument('-e','--epochs', type=int, default=20 ,
                         help='how many epochs to run')
-    parser.add_argument('-nm','--no-mean',action='store_true',default=False,type=bool,
+    parser.add_argument('-nm','--no-mean',action='store_true',
                         help='disables mean pool on grid')
     
     parser.add_argument("-pt","--pretrain",type =str,help="path to the pretrain network",required=True)
