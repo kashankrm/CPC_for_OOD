@@ -5,7 +5,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 import numpy as np
 from loss import contrastive_loss
-from models import Conv4
+from models import Conv4Suggested
 from feature_bank import FeatureBank
 
 class CPCGridMaker:
@@ -57,22 +57,25 @@ def main():
         transforms.Normalize((0.1307,), (0.3081,)),
         CPCGridMaker((8,8))
         ])
-    minist_train = datasets.CIFAR10('./data', train=True, download=True,
+    cifar10_train = datasets.CIFAR10('./data', train=True, download=True,
                        transform=transform)
-    minist_test = datasets.CIFAR10('./data', train=False,
-                       transform=transform)
+    # cifar10_test = datasets.CIFAR10('./data', train=False,
+                    #    transform=transform)
     grid_shape_x = 7
     K=2
     num_neg_sample = args.num_neg_samples
-    latent_size = 128
-    email_sara_mila_lo = False
+    latent_size = 1024
+    included_classes = [0,1,2,3,4,5,6]
+    train_subset = [i for i,v in enumerate(cifar10_train.targets) if v in included_classes]
+    dataset_train = torch.utils.data.Subset(cifar10_train, train_subset)
+
     
 
 
-    train_loader = torch.utils.data.DataLoader(minist_train,batch_size=args.batch_size)
-    test_loader = torch.utils.data.DataLoader(minist_test)
+    train_loader = torch.utils.data.DataLoader(dataset_train,batch_size=args.batch_size)
+    # test_loader = torch.utils.data.DataLoader(cifar10_test)
 
-    model = Conv4(img_channels=3,K=K,latent_size=latent_size).to(device)
+    model = Conv4Suggested(img_channels=3,K=K,latent_size=latent_size).to(device)
     model = model.double()
     optimizer = optim.Adam(model.parameters(),weight_decay=args.weight_decay)
     
@@ -80,14 +83,13 @@ def main():
         model.train()
         total_loss = 0.0
         num_samples = 0
-        feature_bank = FeatureBank(max_len=10000)
         for batch_idx,(data,_) in enumerate(train_loader):
             cur_batch = data.shape[0]
             data = data.to(device).double()
             loss = torch.tensor(0.0).to(device)
             num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
-            output = model(torch.unsqueeze(data.view(-1,*img_shape),1))
+            output = model(data.view(-1,*img_shape))
             output = output.view(*grid_shape,-1)
             # feature_bank.append(output.detach().cpu().numpy(),batch_idx)
             for t in range(grid_shape_x-K):

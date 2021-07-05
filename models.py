@@ -4,6 +4,45 @@ from torch.nn import functional as F
 from pytorch_lightning.utilities.types import EPOCH_OUTPUT
 from torch.nn.modules.linear import Linear
 import pytorch_lightning  as pl
+
+class Conv4Suggested(nn.Module):
+    def __init__(self,img_channels=1,hidden_size=100,K=2,latent_size=1024):
+        super().__init__()
+        self.latent_size = latent_size
+        
+        self.feature = nn.Sequential(*[
+            nn.Conv2d(in_channels=img_channels, out_channels=32, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=64,out_channels=64, kernel_size=3, stride=1,padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d(output_size=(4,4))
+        ])
+        
+        # self.
+        
+        self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
+        self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
+        
+        self.K= K
+        # self.dropout1 = nn.Dropout(0.25)
+        # self.dropout2 = nn.Dropout(0.5)
+        # self.fc1 = nn.Linear(9216, 128)
+        # self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = self.feature(x)
+        return x
+    
 class Conv4(nn.Module):
     def __init__(self,img_channels=1,hidden_size=100,K=2,latent_size=1024):
         super().__init__()
