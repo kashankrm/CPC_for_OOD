@@ -87,33 +87,21 @@ def main():
             loss = torch.tensor(0.0).to(device)
             num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
-            output = model(data.view(-1,*img_shape))
+            output = model(torch.unsqueeze(data.view(-1,*img_shape),1))
             output = output.view(*grid_shape,-1)
-            feature_bank.append(output.detach().cpu().numpy(),batch_idx)
-            for c in range(grid_shape_x):
-                cl = output[:,:,c,:]
-                for t in range(grid_shape_x-K):
-                    inp = cl[:,:t+1,:]
-                    ar_out,_ = model.auto_regressive(inp)
+            # feature_bank.append(output.detach().cpu().numpy(),batch_idx)
+            for t in range(grid_shape_x-K):
+                for c in range(grid_shape_x):            
+                    enc_grid = output[:,:t+1,:,:].view(cur_batch,-1,latent_size)
+                    enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
+                    ar_out,_ = model.auto_regressive(enc_grid)
                     ar_out = ar_out[:,-1,:]
-                    targets = cl[:,t+1:t+K+1,:]
+                    targets = output[:,t+1:t+K+1,c,:]
                     for k in range(K):
                         pos_sample = targets[:,k,:] 
 
-                        neg_idx = [i for i in range(grid_shape_x) if i!=c]
-                        feats = feature_bank.get_samples(num_neg_sample,batch_idx)
-                        ncl_data = np.stack(feats,axis=1)
-                        if email_sara_mila_lo:
-                            
-                            ncl = ncl_data[:,:,:,neg_idx,:]
-                            total_neg_sample = ncl.shape[1]*ncl.shape[2]*ncl.shape[3]
-                        else:
-                            ncl = ncl_data[:,:,k+t,neg_idx,:]
-                            total_neg_sample = ncl.shape[1]*ncl.shape[2]
-                        neg_samples_arr = ncl.reshape((-1,total_neg_sample,latent_size))
-
-                        neg_sample_idx = np.random.choice(total_neg_sample,num_neg_sample,replace=True)
-                        neg_samples = torch.from_numpy(neg_samples_arr[:cur_batch,neg_sample_idx,:]).to(device)
+                        neg_sample_idx = np.random.choice(grid_shape_x**2,num_neg_sample,replace=True)
+                        neg_samples = output.view(cur_batch,-1,latent_size)[:,neg_sample_idx,:]
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
