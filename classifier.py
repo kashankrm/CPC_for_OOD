@@ -6,7 +6,9 @@ from torchvision import datasets, transforms
 import numpy as np
 from loss import contrastive_loss
 from pytorch_lightning import loggers as pl_loggers
-from models import Conv4, Linear_Layer, LinClassifier
+import sys
+sys.path.append("/project/dl2021s/mirfan/CPC_for_OOD/")
+from models import Conv4, LinClassifier
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import logging
@@ -37,7 +39,7 @@ class CPCGridMaker:
 def main():
 
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('-bs','--batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('-bs','--batch-size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('-sm','--save-model', type=bool, default=True ,
                         help='should model be saved')
@@ -48,21 +50,20 @@ def main():
                         help='how often to print loss, every nth')            
     device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
     args = parser.parse_args()
-    grid_shape_x = 7
     email_sara_mila_lo = True
     transform=transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,)),
+        transforms.Normalize(mean=[0.49139968, 0.48215827 ,0.44653124], std=[0.24703233, 0.24348505, 0.26158768]),
         CPCGridMaker((8,8))
         ])
     cifar_train = datasets.CIFAR10('./data', train=True, download=True,
                        transform=transform)
     cifar_test = datasets.CIFAR10('./data', train=False,
-                       transform=transform)
+                       transform=transform)t
 
     train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size,num_workers=4 )
     test_loader = torch.utils.data.DataLoader(cifar_test,batch_size=args.batch_size,num_workers=4 )
-    model = LinClassifier("/project/dl2021s/mirfan/cifar_epoch21.pt")
+    model = LinClassifier("/project/dl2021s/mirfan/CPC_for_OOD/cifarpixelAsmaa_epoch12.pt")
     from pytorch_lightning.callbacks import ModelCheckpoint
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',
@@ -71,15 +72,8 @@ def main():
         verbose=True,
         mode='max'
         )
-    tb_logger = pl_loggers.TensorBoardLogger('logs/',name="cifar10runs")
-    checkpoint_callback = ModelCheckpoint(
-    monitor='val_accuracy',
-    dirpath='logs/cifar10runs',
-    filename='cifar-{epoch:02d}-{val_accuracy:.2f}',
-    save_top_k=3,
-    mode='min',
-)
-    trainer = pl.Trainer(gpus=1,max_epochs= args.epochs,min_epochs=1,logger=tb_logger, callbacks=[early_stop_callback,checkpoint_callback])
+    tb_logger = pl_loggers.TensorBoardLogger('logs/',name="cifarpixelAsmaa10runs")
+    trainer = pl.Trainer(gpus=1,max_epochs= args.epochs,min_epochs=1,logger=tb_logger, callbacks=[early_stop_callback])
     trainer.fit(model, train_loader, test_loader)
 
 if __name__ == '__main__':

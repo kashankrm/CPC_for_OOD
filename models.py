@@ -1,72 +1,61 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-import pytorch_lightning  as pl
+import torchvision.models as models
 from torch.nn.modules.linear import Linear
-from pytorch_lightning.utilities.types import EPOCH_OUTPUT
+import pytorch_lightning  as pl
 class Conv4(nn.Module):
-    def __init__(self,img_channels=1,hidden_size=256,K=2,latent_size=512):
+    def __init__(self,img_channels=3,hidden_size=100,K=2,latent_size=1024):
         super().__init__()
         self.latent_size = latent_size
-        self.feature = nn.Sequential(nn.Conv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False),
-            nn.ReLU(),
-            nn.Dropout2d(p=0.5, inplace=False),
-            nn.Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False),
-            nn.ReLU(),
-            nn.Dropout2d(p=0.5, inplace=False),
-            nn.ReLU(),
-            nn.Dropout2d(p=0.5, inplace=False),
-            nn.Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False),
-            nn.ReLU(),
-            nn.Dropout2d(p=0.5, inplace=False),
-            nn.Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False),
-            nn.ReLU(),
-            nn.Dropout2d(p=0.5, inplace=False),
-            nn.Conv2d(256, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False),
-            nn.ReLU(),
-            nn.Dropout2d(p=0.5, inplace=False),
-            nn.Conv2d(256, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False),
-            nn.ReLU(),
-            nn.Dropout2d(p=0.5, inplace=False),
-            nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False),
-            nn.ReLU(),
-            nn.AdaptiveAvgPool2d(output_size=(1, 1)),
-        )
-        self.auto_regressive = nn.GRU(latent_size,hidden_size,2)
-        # self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
-        self.W = nn.ModuleList([nn.Sequential(nn.Linear(in_features=hidden_size, out_features=hidden_size//2, bias=True),
-        nn.Dropout(),
-        nn.ReLU(),
-        nn.Linear(in_features=hidden_size//2, out_features=latent_size, bias=True)) for i in range(K) ] )     
+        # self.feature = nn.Sequential(*[
+        #     nn.Conv2d(in_channels=img_channels, out_channels=16, kernel_size=5, stride=2,padding=1),
+        #     #nn.BatchNorm2d(16),
+        #     nn.ReLU(),
+        #     nn.Dropout2d(p=0.5, inplace=False),
+        #     nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1,padding=1),
+        #     #nn.BatchNorm2d(32),
+        #     nn.ReLU(),
+        #     nn.Dropout2d(p=0.5, inplace=False),
+        #     nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1,padding=1),
+        #     #nn.BatchNorm2d(64),
+        #     nn.ReLU(),
+        #     nn.Dropout2d(p=0.5, inplace=False),
+        #     nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1,padding=1),
+        #     #nn.BatchNorm2d(128),
+        #     nn.ReLU(),
+        #     nn.Dropout2d(p=0.5, inplace=False),
+        #     nn.Conv2d(in_channels=128,out_channels=256, kernel_size=3, stride=1,padding=1),
+        #     nn.ReLU(),
+        #     nn.Dropout2d(p=0.5, inplace=False),
+        #     nn.Conv2d(in_channels=256,out_channels=512, kernel_size=3, stride=1,padding=1),
+        #     nn.ReLU(),
+        #     nn.Dropout2d(p=0.5, inplace=False),
+        #     nn.AdaptiveAvgPool2d(output_size=(1,1))
+        # ])
+        self.feature = models.resnet18()
+        self.feature = torch.nn.Sequential(*(list(self.feature.children())[:-1]))
+        self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
+        self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
         self.K= K
         
+        # self.dropout1 = nn.Dropout(0.25)
+        # self.dropout2 = nn.Dropout(0.5)
+        # self.fc1 = nn.Linear(9216, 128)
+        # self.fc2 = nn.Linear(128, 10)
+
     def forward(self, x):
         x = self.feature(x)
         return x
-
-class Linear_Layer(nn.Module):
-    def __init__(self,input_size = 25088, classes = 10):
-        super().__init__()
-        self.feature = nn.Sequential(nn.Linear(input_size, 1024, bias=True),
-        nn.Dropout(),
-        nn.ReLU(inplace=True),
-        nn.Linear(1024, 512, bias=True),
-        nn.Dropout(),
-        nn.ReLU(inplace=True),
-        nn.Linear(512, classes, bias=True))
-    
-    def forward(self, x):
-        x = self.feature(x)
-        return x
-
+       
 class LinClassifier(pl.LightningModule):
     def __init__(self,pretrain_path) -> None:
         super().__init__()
-        K=2
-        latent_size = 512
-        self.feat = Conv4(img_channels=3)
-        ckpt = torch.load(pretrain_path)
-        self.feat.load_state_dict(ckpt["model"])
+        
+        self.feat = Conv4(latent_size=512)
+        model_state = {key[len("feature."):]:val for key,val in torch.load(pretrain_path)["model"].items() if "feature" in key}
+        
+        self.feat.feature.load_state_dict(model_state)
         for param in self.feat.parameters():
             param.requires_grad=False
         
@@ -74,26 +63,26 @@ class LinClassifier(pl.LightningModule):
             self.latent_size = self.feat.latent_size
         else:
             self.latent_size = 512
-
-        self.lin = nn.Sequential(nn.Linear(25088, 1024, bias=True),
-        nn.Dropout(),
-        nn.ReLU(inplace=True),
-        nn.Linear(1024, 512, bias=True),
-        nn.Dropout(),
-        nn.ReLU(inplace=True),
-        nn.Linear(512, 10, bias=True))
-        self.val_acc = 0
+        # self.lin = Linear(25088,10)
+        # self.lin = Linear(4608,10)
+        self.lin = Linear(self.latent_size,10)
     
     def forward(self,x):
+        # print("FORWARD")
         # x = torch.unsqueeze(x,-3)
         batch_grid, img_shape = x.shape[:3],x.shape[3:]
         res = self.feat.feature(x.view(-1,*img_shape))
-        res = res.view(batch_grid[0],-1)
+        # res = res.view(batch_grid[0],-1)
+        res = res.view(*batch_grid,-1)
+        res = torch.mean(res,dim=[1,2])
+        # print(res.shape)
         x = self.lin(res)
-        return x
+        # print(x.shape)
+        return  F.log_softmax(x,1)
 
     def cross_entropy_loss(self,logits,labels):
         return torch.nn.CrossEntropyLoss()(logits,labels)
+
     def training_step(self,train_batch,batch_idx):
         data,target = train_batch
         logits = self.forward(data)
@@ -102,6 +91,7 @@ class LinClassifier(pl.LightningModule):
         self.log("train_accuracy", accuracy)
         self.log("train_loss",loss)
         return loss
+
     def validation_step(self,val_batch,batch_idx):
         data, target = val_batch
         logits = self.forward(data)
@@ -109,17 +99,12 @@ class LinClassifier(pl.LightningModule):
         accuracy = self.accuracy(logits, target)
         self.log("val_loss",loss)
         self.log("val_accuracy",accuracy)
-        
         return {"val_loss": loss, "val_accuracy": accuracy}
-    def validation_epoch_end(self, outputs: EPOCH_OUTPUT) -> None:
         
-        accuracy = torch.tensor([x["val_accuracy"] for x in outputs]).mean()
-        if self.val_acc <accuracy:
-            self.val_acc = accuracy
-        return super().validation_epoch_end(outputs)
     def configure_optimizers(self):
-        opt = torch.optim.Adam(self.parameters(),lr=1e-3)
+        opt = torch.optim.Adam(self.parameters(), lr = 1e-4)
         return opt
+        
     def accuracy(self, logits, labels):
         _, predicted = torch.max(logits.data, 1)
         correct = (predicted == labels).sum().item()

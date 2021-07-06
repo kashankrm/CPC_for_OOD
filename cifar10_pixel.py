@@ -8,7 +8,6 @@ from loss import contrastive_loss
 from models import Conv4
 # from feature_bank import FeatureBank
 import logging
-logging.basicConfig(filename='pixelcnn.log', level=logging.DEBUG)
 class CPCGridMaker:
     def __init__(self,grid_shape):
         self.grid_shape = grid_shape
@@ -42,13 +41,13 @@ def main():
                         help='should model be saved')
     parser.add_argument('-e','--epochs', type=int, default=200 ,
                         help='how many epochs to run')
-    parser.add_argument('-ns','--num_neg_samples', type=int, default=10 ,
+    parser.add_argument('-ns','--num_neg_samples', type=int, default=25 ,
                         help='how many negative samples to use')
-    parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
+    parser.add_argument('-wd',"--weight-decay",type=float,default=1e-4,
                         help=" weight decay for adam")
-                           
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
+    logging.basicConfig(filename='cifarpixelAsmaa_bs{}_ns{}.log'.format(args.batch_size, args.num_neg_samples), level=logging.DEBUG)                
     print(torch.cuda.is_available())
     print(device)
     # device = torch.device("cpu")
@@ -56,18 +55,17 @@ def main():
 
     transform=transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,)),
+        transforms.Normalize(mean=[0.49139968, 0.48215827 ,0.44653124], std=[0.24703233, 0.24348505, 0.26158768]),
         CPCGridMaker((8,8))
         ])
     cifar_train = datasets.CIFAR10('./data', train=True, download=True,
                        transform=transform)
     cifar_test = datasets.CIFAR10('./data', train=False,
                        transform=transform)
-    grid_shape_x = 7
-    K=2
+    
+    K=3
     num_neg_sample = args.num_neg_samples
     latent_size = 512
-    email_sara_mila_lo = True
     
     train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size)
     test_loader = torch.utils.data.DataLoader(cifar_test)
@@ -86,10 +84,12 @@ def main():
             loss = torch.tensor(0.0).to(device)
             num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
+            grid_shape_x = grid_shape[-1]
             output = model(data.view(-1,*img_shape))
             output = output.view(*grid_shape,-1)
             for t in range(grid_shape_x-K):
                 for c in range(grid_shape_x):        
+                    # print(output.shape)
                     enc_grid = output[:,:t+1,:,:].view(cur_batch,-1,latent_size)
                     enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
                     ar_out,_ = model.auto_regressive(enc_grid)
@@ -111,10 +111,11 @@ def main():
         print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
         logging.debug("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
         if args.save_model:
-            torch.save({
-                "model":model.state_dict(),
-                "opt":optimizer.state_dict()
-            },"cifarpixel_epoch{}.pt".format(e))
+            if e%2 == 0:
+                torch.save({
+                    "model":model.state_dict(),
+                    "opt":optimizer.state_dict()
+                },"cifarpixelAsmaa_epoch{}_bs{}_ns{}.pt".format(e, args.batch_size, args.num_neg_samples))
                         
 if __name__ == '__main__':
     main()

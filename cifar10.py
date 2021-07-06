@@ -7,7 +7,8 @@ import numpy as np
 from loss import contrastive_loss
 from models import Conv4
 # from feature_bank import FeatureBank
-
+import logging
+logging.basicConfig(filename='cifar10.log', level=logging.DEBUG)
 class CPCGridMaker:
     def __init__(self,grid_shape):
         self.grid_shape = grid_shape
@@ -33,7 +34,7 @@ class CPCGridMaker:
 def main():
 
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('-bs','--batch-size', type=int, default=256, metavar='N',
+    parser.add_argument('-bs','--batch-size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('-li','--logging-interval', type=int, default=10 ,
                         help='how often to print loss, every nth')
@@ -54,7 +55,7 @@ def main():
 
     transform=transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,)),
+        transforms.Normalize(mean=[0.49139968, 0.48215827 ,0.44653124], std=[0.24703233, 0.24348505, 0.26158768]),
         CPCGridMaker((8,8))
         ])
     cifar_train = datasets.CIFAR10('./data', train=True, download=True,
@@ -80,6 +81,7 @@ def main():
         num_samples = 0
         # feature_bank = FeatureBank(max_len=10)
         for batch_idx,(data,_) in enumerate(train_loader):
+            # print(data.shape)
             cur_batch = data.shape[0]
             data = data.to(device).double()
             loss = torch.tensor(0.0).to(device)
@@ -118,7 +120,9 @@ def main():
             total_loss += loss.item()
             if batch_idx % args.logging_interval ==0:
                 print("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
+                logging.debug("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
         print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
+        logging.debug("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
         if args.save_model:
             torch.save({
                 "model":model.state_dict(),
