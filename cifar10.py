@@ -7,6 +7,7 @@ import numpy as np
 from loss import contrastive_loss
 from models import Conv4Suggested
 from feature_bank import FeatureBank
+import random
 
 class CPCGridMaker:
     def __init__(self,grid_shape):
@@ -90,20 +91,22 @@ def main():
             num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
             output = model(data.view(-1,*img_shape))
-            output = output.view(*grid_shape,-1)
+            # output = output.view(*grid_shape,-1)
+            output = output.view(cur_batch,-1,latent_size)
             # feature_bank.append(output.detach().cpu().numpy(),batch_idx)
-            for t in range(grid_shape_x-K):
-                for c in range(grid_shape_x):            
-                    enc_grid = output[:,:t+1,:,:].view(cur_batch,-1,latent_size)
-                    enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
-                    ar_out,_ = model.auto_regressive(enc_grid)
+            for r in range(grid_shape_x-K):
+                for c in range(grid_shape_x):   
+                    seq = output[:,:(r*grid_shape_x + c +1),:]   
+                    neg_samples_arr = output[:,(r*grid_shape_x + c +1):,:]
+                    # enc_grid = output[:,:r+1,:,:].view(cur_batch,-1,latent_size)
+                    # enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
+                    ar_out,_ = model.auto_regressive(seq)
                     ar_out = ar_out[:,-1,:]
-                    targets = output[:,t+1:t+K+1,c,:]
                     for k in range(K):
-                        pos_sample = targets[:,k,:] 
-
-                        neg_sample_idx = np.random.choice(grid_shape_x**2,num_neg_sample,replace=True)
-                        neg_samples = output.view(cur_batch,-1,latent_size)[:,neg_sample_idx,:]
+                        pos_sample = output[:,(r+k+1)*grid_shape_x+c,:]
+                        possible_neg_samples = set(range(neg_samples_arr.shape[1])) - set(((k+1)*grid_shape_x-1,))
+                        neg_sample_idx = random.choices(list(possible_neg_samples),k=num_neg_sample)
+                        neg_samples = neg_samples_arr[:,neg_sample_idx,:]
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
@@ -117,7 +120,7 @@ def main():
             torch.save({
                 "model":model.state_dict(),
                 "opt":optimizer.state_dict()
-            },"cifar_epoch{}.pt".format(e))
+            },"cifar7_epoch{}.pt".format(e))
                         
 
     
