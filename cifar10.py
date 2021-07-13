@@ -107,15 +107,14 @@ def main():
                         pos_sample = output[:,(r+k+1)*grid_shape_x+c,:]
                         possible_neg_samples = set(range(neg_samples_arr.shape[1])) - set(((k+1)*grid_shape_x-1,))
                         neg_sample_idx = random.choices(list(possible_neg_samples),k=num_neg_sample)
-                        neg_samples = neg_samples_arr[:,neg_sample_idx,:]
-                        loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
+                        loss += contrastive_loss(pos_sample,neg_samples_arr[:,neg_sample_idx,:],model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
             total_loss += loss.item()
             if batch_idx % args.logging_interval ==0:
-                print("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
+                print("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/cur_batch,batch_idx,len(train_loader)))
         print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
         if args.save_model:
             torch.save({
