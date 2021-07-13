@@ -56,6 +56,7 @@ def main():
     transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,)),
+        transforms.RandomHorizontalFlip(p=0.5),
         CPCGridMaker((8,8))
         ])
     cifar10_train = datasets.CIFAR10('./data', train=True, download=True,
