@@ -95,10 +95,10 @@ def main():
             # output = output.view(*grid_shape,-1)
             output = output.view(cur_batch,-1,latent_size)
             # feature_bank.append(output.detach().cpu().numpy(),batch_idx)
+            del data
             for r in range(grid_shape_x-K):
                 for c in range(grid_shape_x):   
-                    seq = output[:,:(r*grid_shape_x + c +1),:]   
-                    neg_samples_arr = output[:,(r*grid_shape_x + c +1):,:]
+                    seq,neg_samples_arr = torch.split(output,[r*grid_shape_x+c+1,-1],dim=1)
                     # enc_grid = output[:,:r+1,:,:].view(cur_batch,-1,latent_size)
                     # enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
                     ar_out,_ = model.auto_regressive(seq)
