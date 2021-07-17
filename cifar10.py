@@ -7,7 +7,7 @@ import numpy as np
 from loss import contrastive_loss
 from models_cifar10 import Conv4
 import logging
-from CPCGridMaker import CPCGridMaker
+from utils import CPCGridMaker, train
 import os
 
 def main():
@@ -48,12 +48,11 @@ def main():
     cifar_train = datasets.CIFAR10(args.data_folder, train=True, download=True,
                        transform=transform)
 
-    K=args.K
-    num_neg_sample = args.num_neg_samples
-    train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size, num_workers = 20)
+    train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size, num_workers = 10)
     model = Conv4(name = args.model, K = args.K).to(device)
     optimizer = optim.Adam(model.parameters(),weight_decay=args.weight_decay, lr = args.learning_rate)
     model = model.double()
+    start_epoch = 0
     if args.resume_model != None:
         ckpt = torch.load(args.resume_model)
         new_state_dict = {}
@@ -64,48 +63,13 @@ def main():
         optimizer.load_state_dict(ckpt["opt"])
         if "epoch" in ckpt:
             start_epoch = ckpt["epoch"]+1
-        else:
-            start_epoch = 0
     model.feature = torch.nn.DataParallel(model.feature).to(device)
     model.auto_regressive = torch.nn.DataParallel(model.auto_regressive).to(device)
     latent_size = model.latent_size
     logging.basicConfig(filename='cifar10_ns{}_k{}.log'.format(args.num_neg_samples,args.K), level=logging.DEBUG)
 
     for e in range(start_epoch,args.epochs):
-        model.train()
-        total_loss = 0.0
-        num_samples = 0
-        for batch_idx,(data,_) in enumerate(train_loader):
-            cur_batch = data.shape[0]
-            data = data.to(device).double()
-            loss = torch.tensor(0.0).to(device)
-            num_samples += data.shape[0]
-            grid_shape,img_shape = data.shape[:3],data.shape[3:]
-            grid_size = grid_shape[-1]
-            output = model(data.view(-1,*img_shape))
-            output = output.view(*grid_shape,-1)
-            for t in range(grid_size-K):
-                for c in range(grid_size):        
-                    enc_grid = output[:,:t+1,:,:].view(cur_batch,-1,latent_size)
-                    enc_grid = enc_grid[:,:-(grid_size-c-1) if (c <grid_size-1) else grid_size,:]
-                    ar_out,_ = model.auto_regressive(enc_grid)
-                    ar_out = ar_out[:,-1,:]
-                    targets = output[:,t+1:t+K+1,c,:]
-                    for k in range(K):
-                        pos_sample = targets[:,k,:] 
-                        neg_sample_idx = np.random.choice(grid_size**2,num_neg_sample,replace=True)
-                        neg_samples = output.view(cur_batch,-1,latent_size)[:,neg_sample_idx,:]
-                        loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
-            optimizer.zero_grad()
-            loss.backward()
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
-            optimizer.step()
-            total_loss += loss.item()
-            if batch_idx % args.logging_interval == 0:
-                print("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
-                logging.debug("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
-        print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
-        logging.debug("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
+        train(e, model, train_loader, device, args, optimizer, logging)
         if args.save_model:
             torch.save({
                     "model":model.state_dict(),
