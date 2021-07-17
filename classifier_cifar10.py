@@ -49,10 +49,11 @@ def main():
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         CPCGridMaker((crop_size,crop_size))
     ])
-    ckpt = torch.load("/misc/student/mirfan/CPC_for_OOD/logs/cifar10/version_14/checkpoints/epoch=199-step=39199.ckpt")
-    model = LinClassifier(args.pretrain, 10)
-    model.load_state_dict(ckpt["state_dict"])
-    model.loaded_optimizer_states_dict = ckpt["optimizer_states"]
+    if args.resume_model:
+        ckpt = torch.load(args.resume_model)
+        model = LinClassifier(args.pretrain, 10)
+        model.load_state_dict(ckpt["state_dict"])
+        model.loaded_optimizer_states_dict = ckpt["optimizer_states"]
     cifar_train = datasets.CIFAR10('./data', train=True, download=True,
                        transform=transform_train)
     cifar_test = datasets.CIFAR10('./data', train=False,

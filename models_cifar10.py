@@ -16,8 +16,8 @@ class Conv4(nn.Module):
         super().__init__()
         if name == "resnet18":
             self.latent_size = 512
-            # self.feature = models.resnet18()
-            self.feature = resnet.__dict__["resnet20"]()
+            self.feature = models.resnet18()
+            # self.feature = resnet.__dict__["resnet20"]()
         elif name == "resnet50":
             self.latent_size = 2048
             self.feature = models.resnet18()

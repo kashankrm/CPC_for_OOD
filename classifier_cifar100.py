@@ -28,7 +28,6 @@ def main():
     parser.add_argument('-rm','--resume-model', type=str,
                         help='Resume model')       
     args = parser.parse_args()
-    args.pretrain = "/misc/student/mirfan/CPC_for_OOD/logs/models/cifarpixel_epoch5_bs128_ns50.pt"
     ckpt = torch.load(args.pretrain)
 
     if "crop_size" in ckpt: 

@@ -38,8 +38,6 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
-    # args.data_folder = "/misc/student/mirfan/CPC_for_OOD/data"
-    # args.model = 'resnet50'
     args.logfile_name = os.path.join(args.save_folder , 'cifar100_ns{}_k{}.log'.format(args.num_neg_samples,args.K))
     args.model_path = os.path.join(args.save_folder , 'models')
     transform = transforms.Compose([
