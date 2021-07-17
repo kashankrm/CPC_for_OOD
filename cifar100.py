@@ -65,13 +65,17 @@ def main():
             new_state_dict[k] = v
         model.load_state_dict(new_state_dict)
         optimizer.load_state_dict(ckpt["opt"])
+        if "epoch" in ckpt:
+            start_epoch = ckpt["epoch"]+1
+        else:
+            start_epoch = 0
     model.feature = torch.nn.DataParallel(model.feature).to(device)
     model.auto_regressive = torch.nn.DataParallel(model.auto_regressive).to(device)
     latent_size = model.latent_size
     
     logging.basicConfig(filename=args.logfile_name, level=logging.DEBUG)
 
-    for e in range(0,args.epochs):
+    for e in range(start_epoch,args.epochs):
         model.train()
         total_loss = 0.0
         num_samples = 0
@@ -81,19 +85,19 @@ def main():
             loss = torch.tensor(0.0).to(device)
             num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
-            grid_shape_x = grid_shape[-1]
+            grid_size = grid_shape[-1]
             output = model(data.view(-1,*img_shape))
             output = output.view(*grid_shape,-1)
-            for t in range(grid_shape_x-K):
-                for c in range(grid_shape_x):        
+            for t in range(grid_size-K):
+                for c in range(grid_size):        
                     enc_grid = output[:,:t+1,:,:].view(cur_batch,-1,latent_size)
-                    enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
+                    enc_grid = enc_grid[:,:-(grid_size-c-1) if (c <grid_size-1) else grid_size,:]
                     ar_out,_ = model.auto_regressive(enc_grid)
                     ar_out = ar_out[:,-1,:]
                     targets = output[:,t+1:t+K+1,c,:]
                     for k in range(K):
                         pos_sample = targets[:,k,:] 
-                        neg_sample_idx = np.random.choice(grid_shape_x**2,num_neg_sample,replace=True)
+                        neg_sample_idx = np.random.choice(grid_size**2,num_neg_sample,replace=True)
                         neg_samples = output.view(cur_batch,-1,latent_size)[:,neg_sample_idx,:]
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()

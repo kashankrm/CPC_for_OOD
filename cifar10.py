@@ -81,19 +81,19 @@ def main():
             loss = torch.tensor(0.0).to(device)
             num_samples += data.shape[0]
             grid_shape,img_shape = data.shape[:3],data.shape[3:]
-            grid_shape_x = grid_shape[-1]
+            grid_size = grid_shape[-1]
             output = model(data.view(-1,*img_shape))
             output = output.view(*grid_shape,-1)
-            for t in range(grid_shape_x-K):
-                for c in range(grid_shape_x):        
+            for t in range(grid_size-K):
+                for c in range(grid_size):        
                     enc_grid = output[:,:t+1,:,:].view(cur_batch,-1,latent_size)
-                    enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
+                    enc_grid = enc_grid[:,:-(grid_size-c-1) if (c <grid_size-1) else grid_size,:]
                     ar_out,_ = model.auto_regressive(enc_grid)
                     ar_out = ar_out[:,-1,:]
                     targets = output[:,t+1:t+K+1,c,:]
                     for k in range(K):
                         pos_sample = targets[:,k,:] 
-                        neg_sample_idx = np.random.choice(grid_shape_x**2,num_neg_sample,replace=True)
+                        neg_sample_idx = np.random.choice(grid_size**2,num_neg_sample,replace=True)
                         neg_samples = output.view(cur_batch,-1,latent_size)[:,neg_sample_idx,:]
                         loss += contrastive_loss(pos_sample,neg_samples,model.W[k],ar_out,norm=True)
             optimizer.zero_grad()
@@ -101,7 +101,7 @@ def main():
             # torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
             optimizer.step()
             total_loss += loss.item()
-            if batch_idx % args.logging_interval ==0:
+            if batch_idx % args.logging_interval == 0:
                 print("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
                 logging.debug("average Loss is {:.4f}, batch_idx is {}/{}".format(loss.item()/data.shape[0],batch_idx,len(train_loader)))
         print("Loss is {}, epoch is {}".format(total_loss/num_samples,e))
