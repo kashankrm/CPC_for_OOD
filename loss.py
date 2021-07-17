@@ -5,13 +5,6 @@ def contrastive_loss(positive, negatives, W, context, temp = 0.5,norm=True):
         positive = positive.unsqueeze(dim=1)
     
     c_w = W(context)
-    # >>> positive.shape
-    # torch.Size([10, 1024])
-    # >>> negative.shape
-    # torch.Size([10, 5, 1024])
-    # >>> c_w.shape
-    # torch.Size([10, 1024])
-
     numerator = torch.bmm(positive, c_w.unsqueeze(dim=2)).squeeze().double()
     denom = torch.bmm(negatives, c_w.unsqueeze(dim=2)).double().squeeze()
     if norm:
