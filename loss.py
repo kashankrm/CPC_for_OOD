@@ -1,6 +1,6 @@
 import torch
 
-def contrastive_loss(positive, negatives, W, context, temp = 0.5,norm=True):
+def contrastive_loss(positive, negatives, W, context, temp = 0.5,norm=True,indivisual_loss =False):
     if len(positive.shape)!=3:
         positive = positive.unsqueeze(dim=1)
     
@@ -20,5 +20,7 @@ def contrastive_loss(positive, negatives, W, context, temp = 0.5,norm=True):
 
     numerator = torch.exp(numerator)
     denom = torch.sum(torch.exp(denom),dim=1)
-    
-    return torch.tensor((-1/(negatives.shape[1]+1))) * (torch.log(numerator/(denom+numerator))).sum()
+    if indivisual_loss:
+        return torch.tensor((-1/(negatives.shape[1]+1))) * (torch.log(numerator/(denom)))
+    else:
+        return torch.tensor((-1/(negatives.shape[1]+1))) * (torch.log(numerator/(denom))).sum()
