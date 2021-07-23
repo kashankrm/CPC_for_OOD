@@ -31,4 +31,4 @@ def contrastive_loss(positive, negatives, W, context, temp = 0.5,norm=True,indiv
     if indivisual_loss:
         return loss
     else:
-        return loss.sum()
+        return loss.sum()/positive.shape[0]

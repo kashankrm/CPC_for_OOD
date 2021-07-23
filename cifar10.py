@@ -110,7 +110,7 @@ def main():
                         pos_sample = output[:,(r+k+1)*grid_shape_x+c,:]
                         possible_neg_samples = set(range(neg_samples_arr.shape[1])) - set(((k+1)*grid_shape_x-1,))
                         neg_sample_idx = random.choices(list(possible_neg_samples),k=num_neg_sample)
-                        loss += contrastive_loss(pos_sample,neg_samples_arr[:,neg_sample_idx,:],model.W[k],ar_out,norm=True)
+                        loss += contrastive_loss(pos_sample,neg_samples_arr[:,neg_sample_idx,:],model.W[k],ar_out,norm=False)
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
