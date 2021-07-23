@@ -72,7 +72,7 @@ class Conv4Mini(nn.Module):
         # self.
         
         self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
-        self.W = nn.ModuleList([get_W_model(hidden_size,latent_size) for i in range(K)] )
+        self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
         
         self.K= K
         # self.dropout1 = nn.Dropout(0.25)
