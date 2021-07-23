@@ -5,7 +5,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 import numpy as np
 from loss import contrastive_loss
-from models import Conv4Suggested
+from models import Conv4Suggested, Conv4Mini
 from feature_bank import FeatureBank
 import random
 
@@ -42,8 +42,10 @@ def main():
                         help='should model be saved')
     parser.add_argument('-e','--epochs', type=int, default=20 ,
                         help='how many epochs to run')
-    parser.add_argument('-ns','--num_neg_samples', type=int, default=5 ,
+    parser.add_argument('-ns','--num_neg_samples', type=int, default=10 ,
                         help='how many negative samples to use')
+    parser.add_argument('-nw','--num-worker', type=int, default=2 ,
+                        help='how many workers to use in dataloader')
     parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
                         help=" weight decay for adam")
                            
@@ -66,18 +68,19 @@ def main():
     grid_shape_x = 7
     K=2
     num_neg_sample = args.num_neg_samples
-    latent_size = 1024
-    included_classes = [0,1,2,3,4,5,6]
-    train_subset = [i for i,v in enumerate(cifar10_train.targets) if v in included_classes]
-    dataset_train = torch.utils.data.Subset(cifar10_train, train_subset)
+    latent_size = 64
+    # included_classes = [0,1,2,3,4,5,6]
+    # train_subset = [i for i,v in enumerate(cifar10_train.targets) if v in included_classes]
+    # dataset_train = torch.utils.data.Subset(cifar10_train, train_subset)
+    dataset_train = cifar10_train
 
     
 
 
-    train_loader = torch.utils.data.DataLoader(dataset_train,batch_size=args.batch_size)
+    train_loader = torch.utils.data.DataLoader(dataset_train,batch_size=args.batch_size,shuffle=True,num_workers=args.num_worker)
     # test_loader = torch.utils.data.DataLoader(cifar10_test)
 
-    model = Conv4Suggested(img_channels=3,K=K,latent_size=latent_size).to(device)
+    model = Conv4Mini(img_channels=3,K=K,latent_size=latent_size).to(device)
     model = model.double()
     optimizer = optim.Adam(model.parameters(),weight_decay=args.weight_decay)
     
@@ -120,7 +123,7 @@ def main():
             torch.save({
                 "model":model.state_dict(),
                 "opt":optimizer.state_dict()
-            },"cifar7_epoch{}.pt".format(e))
+            },"newer_loss_cifar10_epoch{}.pt".format(e))
                         
 
     

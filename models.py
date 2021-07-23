@@ -42,6 +42,47 @@ class Conv4Suggested(nn.Module):
     def forward(self, x):
         x = self.feature(x)
         return x
+class Conv4Mini(nn.Module):
+    def __init__(self,img_channels=1,hidden_size=100,K=2,latent_size=64):
+        def get_W_model(hidden_size,latent_size):
+            return nn.Sequential(*[
+                nn.Linear(hidden_size,hidden_size//2),
+                nn.ReLU(),
+                nn.Linear(hidden_size//2,latent_size)
+            ])
+        super().__init__()
+        self.latent_size = latent_size
+        
+        self.feature = nn.Sequential(*[
+            nn.Conv2d(in_channels=img_channels, out_channels=8, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=8, out_channels=8, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=16,out_channels=16, kernel_size=3, stride=1,padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d(output_size=(2,2))
+        ])
+        
+        # self.
+        
+        self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
+        self.W = nn.ModuleList([get_W_model(hidden_size,latent_size) for i in range(K)] )
+        
+        self.K= K
+        # self.dropout1 = nn.Dropout(0.25)
+        # self.dropout2 = nn.Dropout(0.5)
+        # self.fc1 = nn.Linear(9216, 128)
+        # self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = self.feature(x)
+        return x
     
 class Conv4(nn.Module):
     def __init__(self,img_channels=1,hidden_size=100,K=2,latent_size=1024):
