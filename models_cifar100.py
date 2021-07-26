@@ -14,7 +14,7 @@ class Conv4(nn.Module):
             self.latent_size = 2048
             self.feature = models.resnet50()
         self.feature = torch.nn.Sequential(*(list(self.feature.children())[:-1]))
-        self.auto_regressive = nn.GRU(self.latent_size, hidden_size,1)
+        self.auto_regressive = nn.GRU(self.latent_size, hidden_size, 3)
         self.W = nn.ModuleList([nn.Linear(hidden_size,self.latent_size, bias=True) for i in range(K)] )
         self.K= K
 
@@ -26,40 +26,33 @@ class LinClassifier(pl.LightningModule):
     def __init__(self,pretrain_path, n_classes = 10) -> None:
         super().__init__()
         ckpt = torch.load(pretrain_path)
-        if "model_name" in ckpt:
-            model_name = ckpt["model_name"]
+        if "hidden_size" in ckpt:
+            hidden_size = ckpt["hidden_size"]
+            gru = ckpt["gru"]
         else:
-            model_name = "resnet18"
-        self.feat = Conv4(name = model_name )
-        if "latent_size" in ckpt: 
-            self.latent_size = ckpt["latent_size"]
-        elif hasattr(self.feat,"latent_size"):
-            self.latent_size = self.feat.latent_size
-        else:
-            self.latent_size = 512
-        state_dictionary = torch.load(pretrain_path)["model"]
+            hidden_size = 100
+            gru = 1
+        self.feat = Conv4(hidden_size = hidden_size)
         new_state_dict = {}
-        for k, v in state_dictionary.items():
+        for k, v in ckpt["model"].items():
             k = k.replace("module.", "")
             new_state_dict[k] = v
         state_dict = new_state_dict
         self.feat.load_state_dict(state_dict, strict= False)
         self.feat.feature = torch.nn.DataParallel(self.feat.feature)
+        self.feat.auto_regressive = torch.nn.DataParallel(self.feat.auto_regressive)
         for param in self.feat.parameters():
             param.requires_grad=False
-        
+        if hasattr(self.feat,"latent_size"):
+            self.latent_size = self.feat.latent_size
 
         self.lin = Linear(self.latent_size * 7 * 7,n_classes)
-        # self.lin = Linear(self.latent_size ,n_classes)
-        
         self.lin = torch.nn.DataParallel(self.lin)
 
     def forward(self,x):
         batch_grid, img_shape = x.shape[:3],x.shape[3:]
         res = self.feat.feature(x.view(-1,*img_shape))
         res = res.view(batch_grid[0],-1)
-        # res = res.view(*batch_grid,-1)
-        # res = torch.mean(res,dim=[1,2])
         x = self.lin(res)
         return  F.log_softmax(x,1)
 

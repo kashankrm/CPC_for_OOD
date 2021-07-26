@@ -7,7 +7,7 @@ import numpy as np
 from pytorch_lightning import loggers as pl_loggers
 import sys
 from models_cifar100 import LinClassifier
-from CPCGridMaker import CPCGridMaker
+from utils import CPCGridMaker
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import logging
@@ -16,7 +16,7 @@ import logging
 def main():
 
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('-bs','--batch-size', type=int, default=128, metavar='N',
+    parser.add_argument('-bs','--batch-size', type=int, default=512, metavar='N',
                         help='input batch size for training (default: 128)')
     parser.add_argument('-sm','--save-model', type=bool, default=True ,
                         help='should model be saved')
@@ -28,6 +28,7 @@ def main():
     parser.add_argument('-rm','--resume-model', type=str,
                         help='Resume model')       
     args = parser.parse_args()
+    args.pretrain = "/misc/student/mirfan/CPC_for_OOD/logs/models/cifar100shuffleepoch29_bs512_ns30.pt"
     ckpt = torch.load(args.pretrain)
 
     if "crop_size" in ckpt: 
@@ -51,8 +52,8 @@ def main():
                        transform=transform_train)
     cifar_test = datasets.CIFAR100('./data', train=False,
                        transform=transform_test)
-    train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size,num_workers=4 )
-    test_loader = torch.utils.data.DataLoader(cifar_test,batch_size=args.batch_size,num_workers=4 )
+    train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size,num_workers=20, shuffle = True )
+    test_loader = torch.utils.data.DataLoader(cifar_test,batch_size=args.batch_size,num_workers=20 )
     model = LinClassifier(args.pretrain, 100)
     early_stop_callback = EarlyStopping(
         monitor='val_accuracy',

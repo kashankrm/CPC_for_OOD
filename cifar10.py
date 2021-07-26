@@ -20,14 +20,16 @@ def main():
                         help='how often to print loss, every nth')
     parser.add_argument('-sm','--save-model', type=bool, default=True ,
                         help='should model be saved')
-    parser.add_argument('-e','--epochs', type=int, default=100 ,
+    parser.add_argument('-e','--epochs', type=int, default=200 ,
                         help='how many epochs to run')
-    parser.add_argument('-ns','--num_neg_samples', type=int, default=30 ,
+    parser.add_argument('-ns','--num_neg_samples', type=int, default=40 ,
                         help='how many negative samples to use')
     parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
                         help=" weight decay for adam")
     parser.add_argument('-k','--K', type=int, default=3 ,
                         help='how many steps to predict')
+    parser.add_argument("--hidden-size",type=int,default= 256,help="GRU hidden size")
+    parser.add_argument("--gru",type=int,default=3,help="GRU layers")
     parser.add_argument('-rm',"--resume-model",type=str,help="path to ckpt to resume model")
     parser.add_argument('-cs',"--crop-size",type=int,default=8,help="crop size")
     parser.add_argument('-lr',"--learning-rate",type=float,default=0.001,help="learning-rate")
@@ -45,11 +47,12 @@ def main():
     ])
     # args.data_folder = "/misc/student/mirfan/CPC_for_OOD/data"
     # args.model = 'resnet18'
+    print(args)
     cifar_train = datasets.CIFAR10(args.data_folder, train=True, download=True,
                        transform=transform)
 
-    train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size, num_workers = 10)
-    model = Conv4(name = args.model, K = args.K).to(device)
+    train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size, num_workers = 17, shuffle = True)
+    model = Conv4(name = args.model, K = args.K, hidden_size= args.hidden_size, gru = args.gru).to(device)
     optimizer = optim.Adam(model.parameters(),weight_decay=args.weight_decay, lr = args.learning_rate)
     model = model.double()
     start_epoch = 0
@@ -80,7 +83,10 @@ def main():
                     "crop_size" : args.crop_size,
                     "model_name" : args.model,
                     "batch_size" : args.batch_size,
-                    "num_neg_samples" : args.num_neg_samples
+                    "num_neg_samples" : args.num_neg_samples,
+                    "hidden_size" : args.hidden_size,
+                    "gru"  : args.gru,
+                    "args" : args
             },os.path.join(args.model_path, "cifar10_epoch{}_bs{}_ns{}.pt".format(e, args.batch_size, args.num_neg_samples)))
     
 if __name__ == '__main__':

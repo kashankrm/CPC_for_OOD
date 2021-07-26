@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 import numpy as np
 from loss import contrastive_loss
 from models_mnist import Conv4
-from utils import CPCGridMaker, train
+from utils import CPCGridMaker, train, get_mnist_loader
 import logging
 
 
@@ -29,7 +29,10 @@ def main():
                         help='how many steps to predict')
     parser.add_argument('-rm',"--resume-model",type=str,help="path to ckpt to resume model")
     parser.add_argument('-cs',"--crop-size",type=int,default=8,help="crop size")
-                           
+    parser.add_argument('-lr',"--learning-rate",type=float,default=1e-3,help="learning-rate")
+    parser.add_argument("--data-folder",type=str,default='./data',help="data_folder")
+    parser.add_argument("--save-folder",type=str,default='./logs',help="save folder")
+
     device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
     args = parser.parse_args()
 
@@ -39,9 +42,9 @@ def main():
         CPCGridMaker((args.crop_size,args.crop_size))
         ])
 
-    minist_train = datasets.MNIST('./data', train=True, download=True,
-                       transform=transform)
-    minist_test = datasets.MNIST('./data', train=False,
+    minist_train = datasets.MNIST(args.data_folder, train=True, download=True,
+                       transform=transform, shuffle = True)
+    minist_test = datasets.MNIST(args.data_folder, train=False,
                        transform=transform)
     
     
@@ -65,7 +68,8 @@ def main():
                     "K" : args.K,
                     "epoch" : e,
                     "latent_size": args.latent_size,
-                    "crop_size":args.crop_size
+                    "crop_size":args.crop_size,
+                    "args" : args
                     },"mnist_epoch{}_ns{}_k{}.pt".format(e,args.num_neg_samples,args.K))
                    
 

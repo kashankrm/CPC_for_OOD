@@ -6,13 +6,9 @@ from torch.nn.modules.linear import Linear
 import pytorch_lightning  as pl
 import resnet
 
-model_names = sorted(name for name in resnet.__dict__
-    if name.islower() and not name.startswith("__")
-                     and name.startswith("resnet")
-                     and callable(resnet.__dict__[name]))
 
 class Conv4(nn.Module):
-    def __init__(self, name="resnet18",hidden_size=100,K=2):
+    def __init__(self, name="resnet18",hidden_size=100,K=2, gru = 1):
         super().__init__()
         if name == "resnet18":
             self.latent_size = 512
@@ -22,9 +18,11 @@ class Conv4(nn.Module):
             self.latent_size = 2048
             self.feature = models.resnet18()
         self.feature = torch.nn.Sequential(*(list(self.feature.children())[:-1]))
-        self.auto_regressive = nn.GRU(self.latent_size, hidden_size,1)
+        self.auto_regressive = nn.GRU(self.latent_size, hidden_size, gru)
         self.W = nn.ModuleList([nn.Linear(hidden_size,self.latent_size, bias=False) for i in range(K)] )
         self.K= K
+        self.gru = gru
+        self.hidden_size = hidden_size
 
     def forward(self, x):
         x = self.feature(x)
@@ -33,10 +31,16 @@ class Conv4(nn.Module):
 class LinClassifier(pl.LightningModule):
     def __init__(self,pretrain_path, n_classes = 10) -> None:
         super().__init__()
-        self.feat = Conv4()
-        ckpt = torch.load(pretrain_path)["model"]
+        ckpt = torch.load(pretrain_path)
+        if "hidden_size" in ckpt:
+            hidden_size = ckpt["hidden_size"]
+            gru = ckpt["gru"]
+        else:
+            hidden_size = 100
+            gru = 1
+        self.feat = Conv4(hidden_size = hidden_size, gru = gru)
         new_state_dict = {}
-        for k, v in ckpt.items():
+        for k, v in ckpt["model"].items():
             k = k.replace("module.", "")
             new_state_dict[k] = v
         state_dict = new_state_dict
@@ -48,21 +52,17 @@ class LinClassifier(pl.LightningModule):
         if hasattr(self.feat,"latent_size"):
             self.latent_size = self.feat.latent_size
 
-        self.lin = Linear(self.latent_size * 7 * 7,n_classes)
-        # self.lin = Linear(29988,n_classes)
+        self.lin = Linear(self.latent_size * 7 * 7 ,n_classes)
         self.lin = torch.nn.DataParallel(self.lin)
+
         
 
     def forward(self,x):
         batch_grid, img_shape = x.shape[:3],x.shape[3:]
         res = self.feat.feature(x.view(-1,*img_shape))
         res_flat = res.view(batch_grid[0],-1)
-        # output = res.view(*batch_grid,-1)
-        # output = self.feat.auto_regressive(output[:,:,:,:].view(output.shape[0],-1,512))[0].view(output.shape[0],-1)
-        # concatenated_features = torch.cat((output,res_flat), 1)
         x = self.lin(res_flat)
-        # return  F.log_softmax(x,1)
-        return x
+        return  F.log_softmax(x,1)
 
     def cross_entropy_loss(self,logits,labels):
         return torch.nn.CrossEntropyLoss()(logits,labels)
