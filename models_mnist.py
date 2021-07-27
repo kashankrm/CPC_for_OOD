@@ -6,7 +6,7 @@ import pytorch_lightning  as pl
 
 
 class Conv4(nn.Module):
-    def __init__(self,img_channels=1,hidden_size=100,K=2,latent_size=512):
+    def __init__(self,img_channels=1,hidden_size=100,K=2,latent_size=512, gru = 1):
         super().__init__()
         self.latent_size = latent_size
         self.feature = nn.Sequential(*[
@@ -35,10 +35,10 @@ class Conv4(nn.Module):
             nn.AdaptiveAvgPool2d(output_size=(1,1))
         ])
         
-        self.auto_regressive = nn.GRU(latent_size, hidden_size,1)
+        self.auto_regressive = nn.GRU(latent_size, hidden_size,gru)
         self.W = nn.ModuleList([nn.Linear(hidden_size, latent_size, bias=False) for i in range(K)] )
         self.K= K
-
+        self.gru = gru
     def forward(self, x):
         x = self.feature(x)
         return x
@@ -50,7 +50,15 @@ class LinClassifier(pl.LightningModule):
         ckpt = torch.load(pretrain_path)
         if "latent_size" in ckpt:
             self.latent_size = ckpt["latent_size"]
-        self.feat = Conv4(latent_size = self.latent_size)
+            self.hidden_size = ckpt["hidden_size"]
+            self.gru = ckpt["gru"]
+            self.K = ckpt["K"]
+        else:
+            self.hidden_size = 100
+            self.gru = 1
+            self.latent_size = 512
+            self.K = 2
+        self.feat = Conv4(hidden_size=self.hidden_size,K=self.K,latent_size=self.latent_size, gru = self.gru)
         model_state = {key[len("feature."):]:val for key,val in ckpt["model"].items() if "feature" in key}
         
         self.feat.feature.load_state_dict(model_state)

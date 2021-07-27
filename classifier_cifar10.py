@@ -28,15 +28,15 @@ def main():
                         help='how often to print loss, every nth')     
     parser.add_argument('-rm','--resume-model', type=str,
                         help='Resume model')       
+    parser.add_argument("--data-folder",type=str,default='./data',help="data_folder")
     device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
     args = parser.parse_args()
-    args.pretrain = "/misc/student/mirfan/CPC_for_OOD/logs/models/cifar10_epoch28_bs512_ns40.pt"
     ckpt = torch.load(args.pretrain)
     if "crop_size" in ckpt: 
         crop_size = ckpt["crop_size"]
     else:
         crop_size = 8
-    logging.basicConfig(filename='cifar10shuffleclassifier_bs{}.log'.format(args.batch_size), level=logging.DEBUG)    
+    logging.basicConfig(filename='cifar10classifier_bs{}.log'.format(args.batch_size), level=logging.DEBUG)    
     transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
     transforms.RandomHorizontalFlip(),
@@ -55,9 +55,9 @@ def main():
         ckpt = torch.load(args.resume_model)
         model.load_state_dict(ckpt["state_dict"])
         model.loaded_optimizer_states_dict = ckpt["optimizer_states"]
-    cifar_train = datasets.CIFAR10('./data', train=True, download=True,
+    cifar_train = datasets.CIFAR10(args.data_folder, train=True, download=True,
                        transform=transform_train)
-    cifar_test = datasets.CIFAR10('./data', train=False,
+    cifar_test = datasets.CIFAR10(args.data_folder, train=False,
                        transform=transform_test)
     train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size,num_workers=4 )
     test_loader = torch.utils.data.DataLoader(cifar_test,batch_size=args.batch_size,num_workers=4 )

@@ -6,3 +6,4 @@ lightning_logs/*
 cpc_models/*
 logs/*
 *.log
+graphs/*

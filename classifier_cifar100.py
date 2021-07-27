@@ -26,9 +26,9 @@ def main():
     parser.add_argument('-li','--logging-interval', type=int, default=10 ,
                         help='how often to print loss, every nth')     
     parser.add_argument('-rm','--resume-model', type=str,
-                        help='Resume model')       
+                        help='Resume model')     
+    parser.add_argument("--data-folder",type=str,default='./data',help="data_folder")  
     args = parser.parse_args()
-    args.pretrain = "/misc/student/mirfan/CPC_for_OOD/logs/models/cifar100shuffleepoch29_bs512_ns30.pt"
     ckpt = torch.load(args.pretrain)
 
     if "crop_size" in ckpt: 
@@ -48,9 +48,9 @@ def main():
         transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
         CPCGridMaker((args.crop_size,args.crop_size))
     ])
-    cifar_train = datasets.CIFAR100('./data', train=True, download=True,
+    cifar_train = datasets.CIFAR100(args.data_folder, train=True, download=True,
                        transform=transform_train)
-    cifar_test = datasets.CIFAR100('./data', train=False,
+    cifar_test = datasets.CIFAR100(args.data_folder, train=False,
                        transform=transform_test)
     train_loader = torch.utils.data.DataLoader(cifar_train,batch_size=args.batch_size,num_workers=20, shuffle = True )
     test_loader = torch.utils.data.DataLoader(cifar_test,batch_size=args.batch_size,num_workers=20 )

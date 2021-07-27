@@ -44,7 +44,8 @@ class mnist_Conv4(nn.Module):
         # self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
-        x = x.unsqueeze(1)
+        if len(x.shape) == 3:
+            x = x.unsqueeze(1)
         x = self.feature(x)
         return x
        

@@ -16,6 +16,8 @@ class Conv4(nn.Module):
    
 
     def forward(self, x):
+        if len(x.shape) == 3:
+            x = x.unsqueeze(1)
         x = self.feature(x)
         return x
        
@@ -112,6 +114,43 @@ class Conv4Mini(nn.Module):
         self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
         self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
         self.K= K
+    def forward(self, x):
+        x = self.feature(x)
+        return x
+
+
+
+
+class fConv4(nn.Module):
+    def __init__(self,img_channels=1,hidden_size=100,K=2,latent_size=1024):
+        super().__init__()
+        self.latent_size = latent_size
+        
+        self.feature = nn.Sequential(*[
+            nn.Conv2d(in_channels=img_channels, out_channels=32, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=2,padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1,padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=64,out_channels=64, kernel_size=3, stride=1,padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d(output_size=(4,4))
+        ])
+        
+        
+        self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
+        self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
+        
+        self.K= K
+
+
     def forward(self, x):
         x = self.feature(x)
         return x
