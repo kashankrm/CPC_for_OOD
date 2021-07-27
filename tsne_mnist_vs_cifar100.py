@@ -12,27 +12,8 @@ from yellowbrick.text import TSNEVisualizer
 from matplotlib import pyplot as plt
 
 
-def main():
+def main(args,model_name):
 
-    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('-bs','--batch-size', type=int, default=128, metavar='N',
-                        help='input batch size for training (default: 64)')
-    parser.add_argument('-li','--logging-interval', type=int, default=100 ,
-                        help='how often to print loss, every nth')
-    parser.add_argument('-sm','--save-model', type=bool, default=True ,
-                        help='should model be saved')
-    parser.add_argument('-e','--epochs', type=int, default=20 ,
-                        help='how many epochs to run')
-    parser.add_argument('-ns','--num_neg_samples', type=int, default=20 ,
-                        help='how many negative samples to use')
-    parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
-                        help=" weight decay for adam")
-    parser.add_argument('-k','--K', type=int, default=2 ,
-                        help='how many steps to predict')
-    
-                           
-    device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
-    args = parser.parse_args()
 
     # device = torch.device("cpu")
     
@@ -73,14 +54,13 @@ def main():
     mnist_loader = torch.utils.data.DataLoader(mnist_test,batch_size=256,num_workers=0)
     cifar100_loader = torch.utils.data.DataLoader(cifar100_test,batch_size=256,num_workers=0)
 
-    model = LinClassifier("/home/kashankarimudin/asmaa_google_pt/mnist_epoch89_ns30_k3.pt").to(device)
+    model = LinClassifier(f"E:\\study\\sem_4\\dl_lab\\project\\cpc_models\\asmaa_pt\\{model_name}.pt").to(device)
     
     model = model.double()
     mnist_embed = []
     
     for batch_idx,(data,target) in enumerate(mnist_loader):
-        if batch_idx ==5:
-            break
+        
         cur_batch = data.shape[0]
         data = data.to(device).double()
         grid_shape,img_shape = data.shape[:3],data.shape[3:]
@@ -92,8 +72,7 @@ def main():
             
     cifar100_embed = []
     for batch_idx,(data,target) in enumerate(cifar100_loader):
-        if batch_idx ==5:
-            break
+        
         cur_batch = data.shape[0]
         data = data.to(device).double()
         grid_shape,img_shape = data.shape[:3],data.shape[3:]
@@ -104,7 +83,7 @@ def main():
     mnist_embed = np.concatenate(mnist_embed,axis=0)
     cifar100_embed = np.concatenate(cifar100_embed,axis=0)
     X = np.concatenate([mnist_embed,cifar100_embed],axis=0)
-    y = np.array([*["minst"]*data_points,*["cifar10"]*data_points])
+    y = np.array([*["MNIST"]*data_points,*["CIFAR-100"]*data_points])
 
     
     
@@ -112,7 +91,8 @@ def main():
     tsne = TSNEVisualizer(alpha=0.8)
     tsne.fit(X,y)
     tsne.finalize()
-    plt.savefig("mnist_vs_cifar100.png")
+    plt.savefig(f"mnist_vs_cifar100_{model_name}.png")
+    plt.gcf().clear()
     # tsne.show()
     
     
@@ -126,4 +106,26 @@ def main():
     
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('-bs','--batch-size', type=int, default=128, metavar='N',
+                        help='input batch size for training (default: 64)')
+    parser.add_argument('-li','--logging-interval', type=int, default=100 ,
+                        help='how often to print loss, every nth')
+    parser.add_argument('-sm','--save-model', type=bool, default=True ,
+                        help='should model be saved')
+    parser.add_argument('-e','--epochs', type=int, default=20 ,
+                        help='how many epochs to run')
+    parser.add_argument('-ns','--num_neg_samples', type=int, default=20 ,
+                        help='how many negative samples to use')
+    parser.add_argument('-wd',"--weight-decay",type=float,default=1e-5,
+                        help=" weight decay for adam")
+    parser.add_argument('-k','--K', type=int, default=2 ,
+                        help='how many steps to predict')
+    
+                           
+    device = torch.device("cuda" if torch.cuda.is_available() and False else "cpu")
+    args = parser.parse_args()
+    model_name = "mnist_epoch89_ns30_k3"
+    model_list = ["mnist_epoch89_ns10_k3","mnist_epoch89_ns30_k2","mnist_epoch89_ns30_k3","mnist_epoch99_ns15_k2","mnist_epoch99_ns20_k2"]
+    for model_name in model_list:
+        main(args,model_name)

@@ -6,12 +6,16 @@ from torchvision import datasets, transforms
 import numpy as np
 from loss import contrastive_loss
 from utils import CPCGridMaker
-from models_mnist import Conv4, LinClassifier
+from models_cifar10 import Conv4, LinClassifier
 
 from yellowbrick.text import TSNEVisualizer
 from matplotlib import pyplot as plt
 
+
 def main(args,model_name):
+
+    
+
     # device = torch.device("cpu")
     
     data_points = 200
@@ -20,14 +24,24 @@ def main(args,model_name):
         transforms.Normalize((0.1307,), (0.3081,)),
         CPCGridMaker((8,8))
         ])
-    emnist_test = datasets.EMNIST('./data',split="letters", train=False, download=True,
-                       transform=transform)
-    mnist_test = datasets.MNIST('./data', train=False,
+    transform_mnist = transforms.Compose([
+        transforms.Resize((32,32)),
+        transforms.ToTensor(),
+        lambda x:torch.stack([x,x,x],dim=0),
+        transforms.Normalize((0.1307,), (0.3081,)),
+        CPCGridMaker((8, 8))
+    ])
+
+    
+    
+    mnist_test = datasets.MNIST('./data',train=False, download=True,
+                       transform=transform_mnist)
+    cifar10_test = datasets.CIFAR10('./data', train=False,
                        transform=transform,download=True)
+    cifar10_subset = np.random.choice(np.arange(0,len(cifar10_test)),data_points)
     mnist_subset = np.random.choice(np.arange(0,len(mnist_test)),data_points)
-    emnist_subset = np.random.choice(np.arange(0,len(emnist_test)),data_points)
-    emnist_test = torch.utils.data.Subset(emnist_test, emnist_subset)
     mnist_test = torch.utils.data.Subset(mnist_test, mnist_subset)
+    cifar10_test = torch.utils.data.Subset(cifar10_test, cifar10_subset)
     
     grid_shape_x = 6
     K=args.K
@@ -38,39 +52,40 @@ def main(args,model_name):
 
 
     # train_loader = torch.utils.data.DataLoader(minist_train,batch_size=args.batch_size,num_workers=4)
+    cifar10_loader = torch.utils.data.DataLoader(cifar10_test,batch_size=256,num_workers=0)
     mnist_loader = torch.utils.data.DataLoader(mnist_test,batch_size=256,num_workers=0)
-    emnist_loader = torch.utils.data.DataLoader(emnist_test,batch_size=256,num_workers=0)
+    
 
     model = LinClassifier(f"E:\\study\\sem_4\\dl_lab\\project\\cpc_models\\asmaa_pt\\{model_name}.pt").to(device)
     
     model = model.double()
-    mnist_embed = []
+    cifar10_embed = []
     
+    for batch_idx,(data,target) in enumerate(cifar10_loader):
+        
+        cur_batch = data.shape[0]
+        data = data.to(device).double()
+        grid_shape,img_shape = data.shape[:3],data.shape[3:]
+        output = model.feat(data.view(-1,*img_shape))
+        output = output.view(*grid_shape,-1)
+        cifar10_embed.append(output.view(cur_batch,-1).detach().cpu().numpy()) 
+        
+        
+            
+    mnist_embed = []
     for batch_idx,(data,target) in enumerate(mnist_loader):
         
         cur_batch = data.shape[0]
         data = data.to(device).double()
         grid_shape,img_shape = data.shape[:3],data.shape[3:]
-        output = model.feat(torch.unsqueeze(data.view(-1,*img_shape),1))
+        output = model.feat(data.view(-1,*img_shape))
         output = output.view(*grid_shape,-1)
+        
         mnist_embed.append(output.view(cur_batch,-1).detach().cpu().numpy()) 
-        
-        
-            
-    emnist_embed = []
-    for batch_idx,(data,target) in enumerate(emnist_loader):
-        
-        cur_batch = data.shape[0]
-        data = data.to(device).double()
-        grid_shape,img_shape = data.shape[:3],data.shape[3:]
-        output = model.feat(torch.unsqueeze(data.view(-1,*img_shape),1))
-        output = output.view(*grid_shape,-1)
-        
-        emnist_embed.append(output.view(cur_batch,-1).detach().cpu().numpy()) 
+    cifar10_embed = np.concatenate(cifar10_embed,axis=0)
     mnist_embed = np.concatenate(mnist_embed,axis=0)
-    emnist_embed = np.concatenate(emnist_embed,axis=0)
-    X = np.concatenate([mnist_embed,emnist_embed],axis=0)
-    y = np.array([*["MNIST"]*data_points,*["EMNIST"]*data_points])
+    X = np.concatenate([cifar10_embed,mnist_embed],axis=0)
+    y = np.array([*["CIFAR-10"]*data_points,*["MNIST"]*data_points])
 
     
     
@@ -78,7 +93,7 @@ def main(args,model_name):
     tsne = TSNEVisualizer(alpha=0.8)
     tsne.fit(X,y)
     tsne.finalize()
-    plt.savefig(f"mnist_vs_emnist_{model_name}.png")
+    plt.savefig(f"cifar10_vs_mnist_{model_name}.png")
     plt.gcf().clear()
     # tsne.show()
     
@@ -110,9 +125,9 @@ if __name__ == '__main__':
                         help='how many steps to predict')
     
                            
-    device = torch.device("cuda" if torch.cuda.is_available() and False  else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
     args = parser.parse_args()
-    model_name = "mnist_epoch89_ns30_k3"
-    model_list = ["mnist_epoch89_ns10_k3","mnist_epoch89_ns30_k2","mnist_epoch89_ns30_k3","mnist_epoch99_ns15_k2","mnist_epoch99_ns20_k2"]
+   
+    model_list = ["cifar_resnet_epoch149_bs64_ns40_cs8","cifar_epoch118_bs64_ns40_cs8_hs100_g3","cifar_sub_epoch10_bs50_ns30_cs8_hs100_g1"]
     for model_name in model_list:
         main(args,model_name)

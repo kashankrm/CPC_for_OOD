@@ -20,14 +20,16 @@ def main(args,model_name):
         transforms.Normalize((0.1307,), (0.3081,)),
         CPCGridMaker((8,8))
         ])
-    emnist_test = datasets.EMNIST('./data',split="letters", train=False, download=True,
-                       transform=transform)
+    # mnist3_test = datasets.EMNIST('./data',split="letters", train=False, download=True,
+    #                    transform=transform)
     mnist_test = datasets.MNIST('./data', train=False,
                        transform=transform,download=True)
-    mnist_subset = np.random.choice(np.arange(0,len(mnist_test)),data_points)
-    emnist_subset = np.random.choice(np.arange(0,len(emnist_test)),data_points)
-    emnist_test = torch.utils.data.Subset(emnist_test, emnist_subset)
-    mnist_test = torch.utils.data.Subset(mnist_test, mnist_subset)
+    included_classes = [0,1,2,3,4,5,6]
+    subset7 = [i for i,v in enumerate(mnist_test.targets) if v in included_classes]
+    mnist7_subset = np.random.choice(subset7,data_points)
+    mnist3_subset = np.random.choice(list(set(range(len(mnist_test))) - set(subset7)),data_points)
+    mnist3_test = torch.utils.data.Subset(mnist_test, mnist3_subset)
+    mnist7_test = torch.utils.data.Subset(mnist_test, mnist7_subset)
     
     grid_shape_x = 6
     K=args.K
@@ -38,27 +40,27 @@ def main(args,model_name):
 
 
     # train_loader = torch.utils.data.DataLoader(minist_train,batch_size=args.batch_size,num_workers=4)
-    mnist_loader = torch.utils.data.DataLoader(mnist_test,batch_size=256,num_workers=0)
-    emnist_loader = torch.utils.data.DataLoader(emnist_test,batch_size=256,num_workers=0)
+    mnist7_loader = torch.utils.data.DataLoader(mnist7_test,batch_size=256,num_workers=0)
+    mnist3_loader = torch.utils.data.DataLoader(mnist3_test,batch_size=256,num_workers=0)
 
     model = LinClassifier(f"E:\\study\\sem_4\\dl_lab\\project\\cpc_models\\asmaa_pt\\{model_name}.pt").to(device)
     
     model = model.double()
-    mnist_embed = []
+    mnist7_embed = []
     
-    for batch_idx,(data,target) in enumerate(mnist_loader):
+    for batch_idx,(data,target) in enumerate(mnist7_loader):
         
         cur_batch = data.shape[0]
         data = data.to(device).double()
         grid_shape,img_shape = data.shape[:3],data.shape[3:]
         output = model.feat(torch.unsqueeze(data.view(-1,*img_shape),1))
         output = output.view(*grid_shape,-1)
-        mnist_embed.append(output.view(cur_batch,-1).detach().cpu().numpy()) 
+        mnist7_embed.append(output.view(cur_batch,-1).detach().cpu().numpy()) 
         
         
             
-    emnist_embed = []
-    for batch_idx,(data,target) in enumerate(emnist_loader):
+    mnist3_embed = []
+    for batch_idx,(data,target) in enumerate(mnist3_loader):
         
         cur_batch = data.shape[0]
         data = data.to(device).double()
@@ -66,11 +68,11 @@ def main(args,model_name):
         output = model.feat(torch.unsqueeze(data.view(-1,*img_shape),1))
         output = output.view(*grid_shape,-1)
         
-        emnist_embed.append(output.view(cur_batch,-1).detach().cpu().numpy()) 
-    mnist_embed = np.concatenate(mnist_embed,axis=0)
-    emnist_embed = np.concatenate(emnist_embed,axis=0)
-    X = np.concatenate([mnist_embed,emnist_embed],axis=0)
-    y = np.array([*["MNIST"]*data_points,*["EMNIST"]*data_points])
+        mnist3_embed.append(output.view(cur_batch,-1).detach().cpu().numpy()) 
+    mnist7_embed = np.concatenate(mnist7_embed,axis=0)
+    mnist3_embed = np.concatenate(mnist3_embed,axis=0)
+    X = np.concatenate([mnist7_embed,mnist3_embed],axis=0)
+    y = np.array([*["MNIST (7 classes)"]*data_points,*["MNIST (3 classes)"]*data_points])
 
     
     
@@ -78,7 +80,7 @@ def main(args,model_name):
     tsne = TSNEVisualizer(alpha=0.8)
     tsne.fit(X,y)
     tsne.finalize()
-    plt.savefig(f"mnist_vs_emnist_{model_name}.png")
+    plt.savefig(f"mnist7_vs_mnist3_{model_name}.png")
     plt.gcf().clear()
     # tsne.show()
     
@@ -112,7 +114,7 @@ if __name__ == '__main__':
                            
     device = torch.device("cuda" if torch.cuda.is_available() and False  else "cpu")
     args = parser.parse_args()
-    model_name = "mnist_epoch89_ns30_k3"
-    model_list = ["mnist_epoch89_ns10_k3","mnist_epoch89_ns30_k2","mnist_epoch89_ns30_k3","mnist_epoch99_ns15_k2","mnist_epoch99_ns20_k2"]
+    model_name = "mnist7_epoch89_ns30_k3"
+    model_list = ["mnist_sub_epoch49_ns15_k2","mnist_sub_epoch59_ns15_k2"]
     for model_name in model_list:
         main(args,model_name)

@@ -7,7 +7,7 @@ import numpy as np
 from loss import contrastive_loss
 from utils import CPCGridMaker
 # from models_cifar10 import Conv4, LinClassifier
-from  legacy_models import Conv4Mini
+from  legacy_models import Conv4Mini, Conv4Suggested
 from yellowbrick.text import TSNEVisualizer
 from matplotlib import pyplot as plt
 
@@ -52,7 +52,7 @@ def main():
     
     cifar100_test = datasets.CIFAR100('./data',train=False, download=True,
                        transform=transform_cifar10)
-    cifar10_test = datasets.CIFAR100('./data', train=False,
+    cifar10_test = datasets.CIFAR10('./data', train=False,
                        transform=transform,download=True)
     cifar10_subset = np.random.choice(np.arange(0,len(cifar10_test)),data_points)
     cifar100_subset = np.random.choice(np.arange(0,len(cifar100_test)),data_points)
@@ -65,11 +65,12 @@ def main():
 
 
     # train_loader = torch.utils.data.DataLoader(minist_train,batch_size=args.batch_size,num_workers=4)
-    cifar10_loader = torch.utils.data.DataLoader(cifar10_test,batch_size=256,num_workers=0)
-    cifar100_loader = torch.utils.data.DataLoader(cifar100_test,batch_size=256,num_workers=0)
+    cifar10_loader = torch.utils.data.DataLoader(cifar10_test,batch_size=64,num_workers=0)
+    cifar100_loader = torch.utils.data.DataLoader(cifar100_test,batch_size=64,num_workers=0)
 
-    model = Conv4Mini(img_channels=3).to(device)
-    model.load_state_dict(torch.load("/home/kashankarimudin/newer_loss_CPC_for_OOD/newer_loss_cifar10_epoch85.pt")["model"])
+    model = Conv4Suggested(img_channels=3).to(device)
+    model_name = "cifar_new_loss_epoch249"
+    model.load_state_dict(torch.load(f"E:\\study\\sem_4\\dl_lab\\project\\cpc_models\\{model_name}.pt")["model"],strict=False)
     
     model = model.double()
     cifar10_embed = []
@@ -87,8 +88,7 @@ def main():
             
     cifar100_embed = []
     for batch_idx,(data,target) in enumerate(cifar100_loader):
-        if batch_idx ==5:
-            break
+        
         cur_batch = data.shape[0]
         data = data.to(device).double()
         grid_shape,img_shape = data.shape[:3],data.shape[3:]
@@ -107,7 +107,7 @@ def main():
     tsne = TSNEVisualizer(alpha=0.8)
     tsne.fit(X,y)
     tsne.finalize()
-    plt.savefig(f"new_loss_cifar10_vs_cifar100_dt{data_points}.png")
+    plt.savefig(f"new_loss_cifar10_vs_cifar100_dt{data_points}_{model_name}.png")
     # tsne.show()
     
     
