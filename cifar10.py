@@ -68,7 +68,7 @@ def main():
     grid_shape_x = 7
     K=2
     num_neg_sample = args.num_neg_samples
-    latent_size = 64
+    latent_size = 1024
     # included_classes = [0,1,2,3,4,5,6]
     # train_subset = [i for i,v in enumerate(cifar10_train.targets) if v in included_classes]
     # dataset_train = torch.utils.data.Subset(cifar10_train, train_subset)
