@@ -12,7 +12,7 @@ class Conv4Suggested(nn.Module):
                 nn.Linear(hidden_size,hidden_size//2),
                 nn.ReLU(),
                 nn.Linear(hidden_size//2,hidden_size//2),
-                nn.RelU(),
+                nn.ReLU(),
                 nn.Linear(hidden_size//2,latent_size)
             ])
         super().__init__()
