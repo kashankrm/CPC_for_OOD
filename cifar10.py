@@ -80,7 +80,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset_train,batch_size=args.batch_size,shuffle=True,num_workers=args.num_worker)
     # test_loader = torch.utils.data.DataLoader(cifar10_test)
 
-    model = Conv4Mini(img_channels=3,K=K,latent_size=latent_size).to(device)
+    model = Conv4Suggested(img_channels=3,K=K,latent_size=latent_size).to(device)
     model = model.double()
     optimizer = optim.Adam(model.parameters(),weight_decay=args.weight_decay)
     
@@ -98,14 +98,15 @@ def main():
             # output = output.view(*grid_shape,-1)
             output = output.view(cur_batch,-1,latent_size)
             # feature_bank.append(output.detach().cpu().numpy(),batch_idx)
+            ar_out_all,_ = model.auto_regressive(output)
             del data
             for r in range(grid_shape_x-K):
                 for c in range(grid_shape_x):   
                     seq,neg_samples_arr = torch.split(output,[r*grid_shape_x+c+1,grid_shape_x**2-(r*grid_shape_x+c+1)],dim=1)
                     # enc_grid = output[:,:r+1,:,:].view(cur_batch,-1,latent_size)
                     # enc_grid = enc_grid[:,:-(grid_shape_x-c-1) if (c <grid_shape_x-1) else grid_shape_x,:]
-                    ar_out,_ = model.auto_regressive(seq)
-                    ar_out = ar_out[:,-1,:]
+                    # ar_out,_ = model.auto_regressive(seq)
+                    ar_out = ar_out_all[:,r*grid_shape_x + c,:]
                     for k in range(K):
                         pos_sample = output[:,(r+k+1)*grid_shape_x+c,:]
                         possible_neg_samples = set(range(neg_samples_arr.shape[1])) - set(((k+1)*grid_shape_x-1,))

@@ -7,6 +7,14 @@ import pytorch_lightning  as pl
 
 class Conv4Suggested(nn.Module):
     def __init__(self,img_channels=1,hidden_size=100,K=2,latent_size=1024):
+        def get_W_model(hidden_size,latent_size):
+            return nn.Sequential(*[
+                nn.Linear(hidden_size,hidden_size//2),
+                nn.ReLU(),
+                nn.Linear(hidden_size//2,hidden_size//2),
+                nn.RelU(),
+                nn.Linear(hidden_size//2,latent_size)
+            ])
         super().__init__()
         self.latent_size = latent_size
         
@@ -31,7 +39,7 @@ class Conv4Suggested(nn.Module):
         # self.
         
         self.auto_regressive = nn.GRU(latent_size,hidden_size,1)
-        self.W = nn.ModuleList([nn.Linear(hidden_size,latent_size,bias=False) for i in range(K)] )
+        self.W = nn.ModuleList([get_W_model(hidden_size,latent_size) for i in range(K)] )
         
         self.K= K
         # self.dropout1 = nn.Dropout(0.25)
@@ -48,6 +56,8 @@ class Conv4Mini(nn.Module):
             return nn.Sequential(*[
                 nn.Linear(hidden_size,hidden_size//2),
                 nn.ReLU(),
+                nn.Linear(hidden_size//2,hidden_size//2),
+                nn.RelU(),
                 nn.Linear(hidden_size//2,latent_size)
             ])
         super().__init__()
